@@ -10,7 +10,7 @@ from fastapi import WebSocket
 
 from ...strategy.ascension import should_ascend
 from ...strategy.config import BotConfig
-from ...utils.database import setup_tables, save_snapshot, save_market_prices, save_market_pnl, save_bot_actions
+from ...utils.database import setup_tables, save_snapshot, save_market_prices, save_market_pnl, save_bot_actions, save_market_trade
 
 
 class GameService:
@@ -27,6 +27,7 @@ class GameService:
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._last_save_time = time.time()
         self._last_snapshot_time = 0
+        self._last_action_count = 0  # Track action log position for trade extraction
 
         setup_tables(db_path)
 
@@ -56,6 +57,30 @@ class GameService:
                             # Save market P/L snapshot
                             if market.get("stats"):
                                 save_market_pnl(self.db_path, market["stats"])
+                        # Extract and save market trades from action log
+                        try:
+                            actions = await loop.run_in_executor(
+                                self._executor, lambda: self.bridge.get_action_log(50)
+                            )
+                            if actions and len(actions) > self._last_action_count:
+                                new_actions = actions[self._last_action_count:]
+                                self._last_action_count = len(actions)
+                                for a in new_actions:
+                                    if a.get("module") == "market" and a.get("action") in ("BUY", "SELL"):
+                                        # Parse trade info from the detail string
+                                        detail = a.get("detail", "")
+                                        trade = {
+                                            "good_id": 0, "symbol": detail.split(" ")[0] if detail else "",
+                                            "action": a["action"].lower(),
+                                            "quantity": 0, "price": 0,
+                                            "mode": 0, "dur": 0, "ratio": 0,
+                                            "net_pct": 0, "pnl": 0,
+                                            "reason": detail
+                                        }
+                                        save_market_trade(self.db_path, trade)
+                        except Exception:
+                            pass
+
                         self._last_snapshot_time = now
 
                     # Check strategic decisions

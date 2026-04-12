@@ -515,12 +515,13 @@ button:hover { background: var(--accent); border-color: var(--accent); }
     font-weight: 600;
     position: relative;
 }
+/* Plant icons in garden tiles — bigger */
 .garden-tile .cc-plant {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
 }
 .garden-tile .cc-plant::after {
-    transform: scale(0.58);
+    transform: scale(0.625);
 }
 .garden-tile.empty { background: var(--accent2); }
 .garden-tile.planted { background: #1a3a1a; border: 1px solid #2d5a2d; }

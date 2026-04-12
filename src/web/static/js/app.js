@@ -640,6 +640,35 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
+// Trade history refresh
+async function refreshTradeHistory() {
+    try {
+        const res = await fetch('/api/market/trades?limit=50');
+        const trades = await res.json();
+        const el = document.getElementById('trade-history');
+        if (!el) return;
+
+        if (Array.isArray(trades) && trades.length > 0) {
+            el.innerHTML = trades.slice(-30).reverse().map(t => {
+                const isBuy = t.action === 'buy';
+                const actionCls = isBuy ? 'mode-rise' : 'mode-fall';
+                const pnlStr = t.pnl ? ` P/L: <span class="${t.pnl >= 0 ? 'net-positive' : 'net-negative'}">${t.pnl >= 0 ? '+' : ''}${formatNumber(t.pnl)}</span>` : '';
+                const netStr = t.net_pct ? ` (${t.net_pct >= 0 ? '+' : ''}${(t.net_pct * 100).toFixed(1)}%)` : '';
+                return `<div class="entry">
+                    <span class="time">${t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : ''}</span>
+                    <span class="${actionCls}" style="font-weight:700">${(t.action || '').toUpperCase()}</span>
+                    <span class="good-icon good-icon-${t.good_id}"></span>
+                    <strong>${t.symbol}</strong> x${t.quantity} @ $${(t.price || 0).toFixed(2)}
+                    ${pnlStr}${netStr}
+                    <span class="dim">${t.reason || ''}</span>
+                </div>`;
+            }).join('');
+        }
+    } catch (e) {}
+}
+
 // Init
 connect();
 setInterval(refreshActionLog, 3000);
+setInterval(refreshTradeHistory, 10000);
+refreshTradeHistory();

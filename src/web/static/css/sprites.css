@@ -150,7 +150,8 @@
 .cc-god-10::after { background-position: -1056px -912px; }  /* Rigidel */
 
 /* === GARDEN PLANT ICONS from gardenPlants.png === */
-/* Each row = one plant, col 5 = mature stage, 48x48 grid */
+/* Same ::after technique that works for goods.css and icons.png */
+/* Game layout: col 0 = seed icon, row = plant.icon value, 48x48 grid */
 .cc-plant {
     display: inline-block;
     width: 22px;
@@ -173,38 +174,38 @@
     top: 0; left: 0;
 }
 
-/* Plant icons (mature stage at col 5 = -240px, row = icon * 48) */
-.cc-plant-0::after  { background-position: -240px 0px; }      /* Baker's wheat */
-.cc-plant-1::after  { background-position: -240px -48px; }    /* Thumbcorn */
-.cc-plant-2::after  { background-position: -240px -96px; }    /* Cronerice */
-.cc-plant-3::after  { background-position: -240px -144px; }   /* Gildmillet */
-.cc-plant-4::after  { background-position: -240px -192px; }   /* Ordinary clover */
-.cc-plant-5::after  { background-position: -240px -240px; }   /* Golden clover */
-.cc-plant-6::after  { background-position: -240px -288px; }   /* Shimmerlily */
-.cc-plant-7::after  { background-position: -240px -336px; }   /* Elderwort */
-.cc-plant-8::after  { background-position: -240px -384px; }   /* Bakeberry */
-.cc-plant-9::after  { background-position: -240px -432px; }   /* Chocoroot */
-.cc-plant-10::after { background-position: -240px -480px; }   /* White chocoroot */
-.cc-plant-11::after { background-position: -240px -528px; }   /* Whiskerbloom */
-.cc-plant-12::after { background-position: -240px -576px; }   /* Chimerose */
-.cc-plant-13::after { background-position: -240px -624px; }   /* Nursetulip */
-.cc-plant-14::after { background-position: -240px -672px; }   /* Drowsyfern */
-.cc-plant-15::after { background-position: -240px -720px; }   /* Wardlichen */
-.cc-plant-16::after { background-position: -240px -768px; }   /* Keenmoss */
-.cc-plant-17::after { background-position: -240px -816px; }   /* Queenbeet */
-.cc-plant-18::after { background-position: -240px -864px; }   /* Juicy queenbeet */
-.cc-plant-19::after { background-position: -240px -912px; }   /* Duketater */
-.cc-plant-20::after { background-position: -240px -960px; }   /* Crumbspore */
-.cc-plant-21::after { background-position: -240px -1008px; }  /* Glovemorel */
-.cc-plant-22::after { background-position: -240px -1056px; }  /* Cheapcap */
-.cc-plant-23::after { background-position: -240px -1104px; }  /* Fool's bolete */
-.cc-plant-24::after { background-position: -240px -1152px; }  /* Doughshroom */
-.cc-plant-25::after { background-position: -240px -1200px; }  /* Wrinklegill */
-.cc-plant-26::after { background-position: -240px -1248px; }  /* White mildew */
-.cc-plant-27::after { background-position: -240px -1296px; }  /* Brown mold */
-.cc-plant-28::after { background-position: -240px -1344px; }  /* Green rot */
-.cc-plant-29::after { background-position: -240px -1392px; }  /* Meddleweed */
-.cc-plant-30::after { background-position: -240px -1440px; }  /* Shriekbulb */
-.cc-plant-31::after { background-position: -240px -1488px; }  /* Tidygrass */
-.cc-plant-32::after { background-position: -240px -1536px; }  /* Everdaisy */
-.cc-plant-33::after { background-position: -240px -1584px; }  /* Ichorpuff */
+/* Plant icons: col 0 (0px x), row = icon * 48 */
+.cc-plant-0::after  { background-position: 0px 0px; }
+.cc-plant-1::after  { background-position: 0px -48px; }
+.cc-plant-2::after  { background-position: 0px -96px; }
+.cc-plant-3::after  { background-position: 0px -144px; }
+.cc-plant-4::after  { background-position: 0px -192px; }
+.cc-plant-5::after  { background-position: 0px -240px; }
+.cc-plant-6::after  { background-position: 0px -288px; }
+.cc-plant-7::after  { background-position: 0px -336px; }
+.cc-plant-8::after  { background-position: 0px -384px; }
+.cc-plant-9::after  { background-position: 0px -432px; }
+.cc-plant-10::after { background-position: 0px -480px; }
+.cc-plant-11::after { background-position: 0px -528px; }
+.cc-plant-12::after { background-position: 0px -576px; }
+.cc-plant-13::after { background-position: 0px -624px; }
+.cc-plant-14::after { background-position: 0px -672px; }
+.cc-plant-15::after { background-position: 0px -720px; }
+.cc-plant-16::after { background-position: 0px -768px; }
+.cc-plant-17::after { background-position: 0px -816px; }
+.cc-plant-18::after { background-position: 0px -864px; }
+.cc-plant-19::after { background-position: 0px -912px; }
+.cc-plant-20::after { background-position: 0px -960px; }
+.cc-plant-21::after { background-position: 0px -1008px; }
+.cc-plant-22::after { background-position: 0px -1056px; }
+.cc-plant-23::after { background-position: 0px -1104px; }
+.cc-plant-24::after { background-position: 0px -1152px; }
+.cc-plant-25::after { background-position: 0px -1200px; }
+.cc-plant-26::after { background-position: 0px -1248px; }
+.cc-plant-27::after { background-position: 0px -1296px; }
+.cc-plant-28::after { background-position: 0px -1344px; }
+.cc-plant-29::after { background-position: 0px -1392px; }
+.cc-plant-30::after { background-position: 0px -1440px; }
+.cc-plant-31::after { background-position: 0px -1488px; }
+.cc-plant-32::after { background-position: 0px -1536px; }
+.cc-plant-33::after { background-position: 0px -1584px; }
