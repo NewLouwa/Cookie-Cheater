@@ -396,12 +396,60 @@ CookieCheater.KB = {
     // - During combo: Dragonflight or Dragon Cursor aura
     // - Passive: Radiant Appetite (x2 CPS) + Breath of Milk
     combos: {
-        tier1: { name: "Frenzy + Click Frenzy", multiplier: 5439 },
-        tier2: { name: "Frenzy + Building Special + CF", multiplier: "variable (100K+)" },
-        tier3: { name: "Elder Frenzy + Click Frenzy", multiplier: 517482 },
-        godzamokTargets: [0, 2, 3, 4], // Cursor, Farm, Mine, Factory (cheap to rebuy)
-        godzamokSafe: [7], // Never sell Wizard Towers
-        minSellCount: 100, // Minimum buildings to sell for meaningful boost
+        // Full names of all golden cookie / wrath cookie buffs
+        buffNames: {
+            "Frenzy":           "x7 CPS for 77s (154s with Get Lucky). Most common golden cookie buff.",
+            "Lucky":            "Instant cookies = min(900*CPS, 15% of bank + 13). Bank 6000*CPS to maximize.",
+            "Click Frenzy":     "x777 clicking power for 13s (26s with Get Lucky). THE combo buff.",
+            "Building Special": "+10% CPS per building count for 30s. Scales hard with many buildings.",
+            "Cookie Storm":     "Rapid cookie rain: 1-7 min CPS via clicking for 7s.",
+            "Dragonflight":     "x1111 clicking power. Requires Dragonflight aura.",
+            "Dragon Harvest":   "x15 clicking power. Requires Dragon Harvest aura.",
+            "Elder Frenzy":     "x666 CPS for 6s (12s with Get Lucky). Wrath cookie only.",
+            "Clot":             "x0.5 CPS for 66s. Bad wrath cookie outcome.",
+            "Cursed Finger":    "CPS=0, but each click gives 10s of CPS. Good with fast clicking.",
+            "Sugar Frenzy":     "x3 CPS for 1h. Costs 1 sugar lump.",
+        },
+
+        // Named combo tiers with full buff names
+        tier1: {
+            name: "Frenzy + Click Frenzy",
+            fullName: "Golden Cookie 'Frenzy' (x7 CPS) + Force the Hand of Fate 'Click Frenzy' (x777 click)",
+            multiplier: 5439,
+            setup: "Wait for natural Frenzy, then cast FtHoF for Click Frenzy. Burst-click for 13-26s."
+        },
+        tier1b: {
+            name: "Frenzy + Dragonflight",
+            fullName: "Golden Cookie 'Frenzy' (x7 CPS) + Dragonflight aura 'Dragonflight' (x1111 click)",
+            multiplier: 7777,
+            setup: "Requires Dragonflight dragon aura. Wait for Frenzy, then natural GC gives Dragonflight."
+        },
+        tier2: {
+            name: "Frenzy + Building Special + Click Frenzy",
+            fullName: "Golden Cookie 'Frenzy' (x7) + 'Building Special' (+10%/building) + FtHoF 'Click Frenzy' (x777)",
+            multiplier: "variable (100K+, scales with building count)",
+            setup: "Requires 2 golden cookies + FtHoF. Extremely rare naturally, use spell planning."
+        },
+        tier3: {
+            name: "Elder Frenzy + Click Frenzy",
+            fullName: "Wrath Cookie 'Elder Frenzy' (x666 CPS) + Force the Hand of Fate 'Click Frenzy' (x777 click)",
+            multiplier: 517482,
+            setup: "Requires Grandmapocalypse stage 3. Wrath cookie gives Elder Frenzy, then FtHoF."
+        },
+
+        // Godzamok details
+        godzamok: {
+            fullName: "Pantheon Spirit 'Godzamok, Spirit of Ruin' in Diamond slot",
+            effect: "+1% clicking power per building sold for 10 seconds",
+            targets: [0, 2, 3, 4], // Cursor, Farm, Mine, Factory (cheap to rebuy)
+            safe: [7], // Never sell Wizard Towers (need magic)
+            minSellCount: 100,
+            note: "Sell 200 buildings = +200% click power on TOP of combo multiplier"
+        },
+
+        godzamokTargets: [0, 2, 3, 4],
+        godzamokSafe: [7],
+        minSellCount: 100,
     },
 
     // ========================================================================
