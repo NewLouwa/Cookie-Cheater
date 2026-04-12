@@ -269,6 +269,9 @@ function updateDashboard(data) {
             'OH:' + data.market.overhead + '% Bkr:' + data.market.brokers + ' Ofc:' + data.market.officeLevel;
     }
 
+    // Combo panel (Overview tab)
+    if (data.pantheonInfo) updateComboPanel(data.pantheonInfo);
+
     // Pantheon tab
     if (data.pantheonInfo) {
         const pi = data.pantheonInfo;
@@ -414,6 +417,76 @@ function initChart() {
             animation: false,
         }
     });
+}
+
+// === Combo panel ===
+function updateComboPanel(panthInfo) {
+    // Active combo banner
+    const currentEl = document.getElementById('combo-current');
+    if (currentEl) {
+        if (panthInfo.currentCombo) {
+            const c = panthInfo.currentCombo;
+            const elapsed = Math.round((Date.now() - c.startTime) / 1000);
+            const gained = c.endCookies ? c.endCookies - c.startCookies : Game?.cookies - c.startCookies;
+            const buffs = (c.buffs || []).map(b => {
+                let desc = b.name;
+                if (b.multCpS > 1) desc += ' (x' + b.multCpS + ' CPS)';
+                if (b.multClick > 1) desc += ' (x' + b.multClick + ' Click)';
+                return desc;
+            }).join(' + ');
+            currentEl.innerHTML = `<div class="combo-active-banner">
+                <strong>COMBO ACTIVE!</strong> ${elapsed}s | Peak x${formatNumber(c.peakMultiplier)} |
+                Buffs: ${buffs}
+                ${c.godzamokSold > 0 ? ' | Godzamok: ' + c.godzamokSold + ' sold' : ''}
+            </div>`;
+        } else {
+            currentEl.innerHTML = '';
+        }
+    }
+
+    // Combo history (from JS memory — DB combos loaded separately)
+    const histEl = document.getElementById('combo-history');
+    if (histEl && panthInfo.comboLog && panthInfo.comboLog.length > 0) {
+        histEl.innerHTML = panthInfo.comboLog.slice().reverse().slice(0, 10).map((c, i) => {
+            const buffs = (c.buffs || []).map(b => {
+                let desc = b.name;
+                if (b.multCpS > 1) desc += '(x' + b.multCpS + ')';
+                if (b.multClick > 1) desc += '(x' + b.multClick + ')';
+                return desc;
+            }).join(' + ');
+            const time = new Date(c.startTime).toLocaleTimeString();
+            return `<div class="combo-entry">
+                <span class="combo-num">#${panthInfo.comboLog.length - i}</span>
+                <div class="combo-detail">
+                    <div><strong>${c.duration}s</strong> — peak <strong>x${formatNumber(c.peakMultiplier)}</strong></div>
+                    <div class="combo-buffs">${time} | ${buffs}${c.godzamokSold > 0 ? ' | Godzamok: ' + c.godzamokSold + ' buildings' : ''}</div>
+                </div>
+                <span class="combo-gain positive">+${formatNumber(c.cookiesGained)}</span>
+            </div>`;
+        }).join('');
+    }
+}
+
+// Also load combo history from DB on startup
+async function loadComboHistory() {
+    try {
+        const res = await fetch('/api/combos?limit=20');
+        const combos = await res.json();
+        const histEl = document.getElementById('combo-history');
+        if (!histEl || !Array.isArray(combos) || combos.length === 0) return;
+        // Only show DB combos if no live combos yet
+        if (histEl.querySelector('.combo-entry')) return;
+        histEl.innerHTML = combos.reverse().map((c, i) => {
+            return `<div class="combo-entry">
+                <span class="combo-num">#${combos.length - i}</span>
+                <div class="combo-detail">
+                    <div><strong>${c.duration}s</strong> — peak <strong>x${formatNumber(c.peak_multiplier)}</strong></div>
+                    <div class="combo-buffs">${c.timestamp || ''} | ${c.buffs || ''}${c.godzamok_sold > 0 ? ' | Godzamok: ' + c.godzamok_sold : ''}</div>
+                </div>
+                <span class="combo-gain positive">+${formatNumber(c.cookies_gained)}</span>
+            </div>`;
+        }).join('');
+    } catch(e) {}
 }
 
 // === Positions table + P/L chart ===
@@ -824,3 +897,4 @@ connect();
 setInterval(refreshActionLog, 3000);
 setInterval(refreshTradeHistory, 10000);
 refreshTradeHistory();
+loadComboHistory();

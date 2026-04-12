@@ -454,6 +454,52 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle:hover { border-color: var(--dim); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
+/* Combo card */
+.combo-card { grid-column: span 2; }
+
+.combo-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.3rem;
+    background: var(--accent2);
+    border-radius: 0.3rem;
+    border-left: 3px solid var(--yellow);
+    font-size: 0.8rem;
+}
+.combo-entry .combo-num {
+    color: var(--yellow);
+    font-weight: 700;
+    min-width: 20px;
+}
+.combo-entry .combo-detail { flex: 1; }
+.combo-entry .combo-buffs {
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 0.15rem;
+}
+.combo-entry .combo-gain {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.combo-entry .combo-gain.positive { color: var(--green); }
+
+.combo-active-banner {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid var(--yellow);
+    border-radius: 0.3rem;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.85rem;
+    animation: comboFlash 0.5s infinite alternate;
+}
+
+.combo-explainer {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--card-border);
+}
+
 /* Minigame common */
 /* Minigame tab background hints */
 #tab-grimoire .card {

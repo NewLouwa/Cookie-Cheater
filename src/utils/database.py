@@ -89,6 +89,17 @@ def setup_tables(db_path="cheater.db"):
             reason TEXT
         );
 
+        -- Combo history (golden cookie combos)
+        CREATE TABLE IF NOT EXISTS combo_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            duration INTEGER,
+            peak_multiplier REAL,
+            cookies_gained REAL,
+            buffs TEXT,
+            godzamok_sold INTEGER DEFAULT 0
+        );
+
         -- Market P/L snapshots (for charts)
         CREATE TABLE IF NOT EXISTS market_pnl (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -253,6 +264,36 @@ def get_market_pnl_history(db_path, limit=200):
     conn = get_connection(db_path)
     rows = conn.execute(
         "SELECT * FROM market_pnl ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in reversed(rows)]
+
+
+def save_combo(db_path, combo):
+    """Save a combo to the database."""
+    conn = get_connection(db_path)
+    buffs_str = ", ".join(b.get("name", "?") for b in combo.get("buffs", []))
+    conn.execute(
+        """INSERT INTO combo_history
+           (duration, peak_multiplier, cookies_gained, buffs, godzamok_sold)
+           VALUES (?, ?, ?, ?, ?)""",
+        (
+            combo.get("duration", 0),
+            combo.get("peakMultiplier", 1),
+            combo.get("cookiesGained", 0),
+            buffs_str,
+            combo.get("godzamokSold", 0),
+        )
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_combo_history(db_path, limit=20):
+    """Get recent combos."""
+    conn = get_connection(db_path)
+    rows = conn.execute(
+        "SELECT * FROM combo_history ORDER BY id DESC LIMIT ?", (limit,)
     ).fetchall()
     conn.close()
     return [dict(r) for r in reversed(rows)]

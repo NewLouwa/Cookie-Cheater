@@ -3,7 +3,8 @@
 from fastapi import APIRouter, Request
 from ...utils.database import (
     get_recent_snapshots, get_recent_actions,
-    get_market_price_history, get_market_trades, get_market_pnl_history
+    get_market_price_history, get_market_trades, get_market_pnl_history,
+    get_combo_history
 )
 
 router = APIRouter()
@@ -150,6 +151,14 @@ async def market_pnl(request: Request):
     db_path = request.app.state.db_path
     limit = int(request.query_params.get("limit", 200))
     return get_market_pnl_history(db_path, limit)
+
+
+@router.get("/combos")
+async def combo_history(request: Request):
+    """Get combo history from DB."""
+    db_path = request.app.state.db_path
+    limit = int(request.query_params.get("limit", 20))
+    return get_combo_history(db_path, limit)
 
 
 @router.post("/market/loan")

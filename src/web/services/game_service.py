@@ -10,7 +10,7 @@ from fastapi import WebSocket
 
 from ...strategy.ascension import should_ascend
 from ...strategy.config import BotConfig
-from ...utils.database import setup_tables, save_snapshot, save_market_prices, save_market_pnl, save_bot_actions, save_market_trade
+from ...utils.database import setup_tables, save_snapshot, save_market_prices, save_market_pnl, save_bot_actions, save_market_trade, save_combo
 
 
 class GameService:
@@ -28,6 +28,7 @@ class GameService:
         self._last_save_time = time.time()
         self._last_snapshot_time = 0
         self._last_action_count = 0  # Track action log position for trade extraction
+        self._last_combo_count = 0   # Track combo log position
 
         setup_tables(db_path)
 
@@ -65,6 +66,20 @@ class GameService:
                                 self._last_action_count = len(trade_log)
                                 for t in new_trades:
                                     save_market_trade(self.db_path, t)
+                        except Exception:
+                            pass
+
+                        # Extract combo history from pantheon module
+                        try:
+                            panth = state.get("pantheonInfo")
+                            if panth and panth.get("comboLog"):
+                                combo_log = panth["comboLog"]
+                                if len(combo_log) > self._last_combo_count:
+                                    new_combos = combo_log[self._last_combo_count:]
+                                    self._last_combo_count = len(combo_log)
+                                    for c in new_combos:
+                                        if c.get("duration"):  # Only save completed combos
+                                            save_combo(self.db_path, c)
                         except Exception:
                             pass
 
