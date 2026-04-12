@@ -23,6 +23,9 @@ CookieCheater.modules.garden = {
         // Determine phase
         this._phase = this._detectPhase(M);
 
+        // Calculate planting cost and tell the purchaser to reserve cookies
+        this._reserveForPlanting(M);
+
         // Auto-harvest mature plants (always)
         this._harvestMature(M);
 
@@ -247,6 +250,35 @@ CookieCheater.modules.garden = {
                     "Switched to " + names[targetSoil] + " for " + this._phase + " phase");
             } catch(e) {}
         }
+    },
+
+    _reserveForPlanting: function(M) {
+        // Tell the purchaser how many cookies the garden needs for planting
+        // so it doesn't spend everything on buildings
+        var emptyTiles = 0;
+        for (var y = 0; y < 6; y++) {
+            for (var x = 0; x < 6; x++) {
+                if (M.isTileUnlocked(x, y) && M.plot[y] && M.plot[y][x] && M.plot[y][x][0] === 0) {
+                    emptyTiles++;
+                }
+            }
+        }
+
+        if (emptyTiles === 0) {
+            CookieCheater._gardenReserve = 0;
+            return;
+        }
+
+        // Find cheapest seed we'd want to plant
+        var seedId = (this._phase === "mutating" || this._phase === "wheat_fill")
+            ? this._findSeed(M, "Baker's wheat")
+            : this._findSeed(M, "Bakeberry");
+        if (seedId < 0) seedId = this._findSeed(M, "Baker's wheat");
+        if (seedId < 0) { CookieCheater._gardenReserve = 0; return; }
+
+        var costPerSeed = M.getCost(M.plantsById[seedId]);
+        // Reserve enough for all empty tiles
+        CookieCheater._gardenReserve = costPerSeed * emptyTiles;
     },
 
     _findSeed: function(M, name) {

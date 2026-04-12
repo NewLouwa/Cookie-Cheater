@@ -28,9 +28,12 @@ CookieCheater.modules.purchaser = {
         var luckyBank = CookieCheater.getLuckyBank();
         var belowBank = cookies < luckyBank;
 
-        // Use real cookies for finding options (not spendable)
-        // Lucky banking is a soft preference, not a hard block
-        var effectiveCookies = cookies;
+        // Reserve cookies for garden planting (garden module sets this)
+        var gardenReserve = CookieCheater._gardenReserve || 0;
+        // Effective cookies = what we can spend after garden reserve
+        // Don't let garden reserve block ALL purchases, cap at 60% of bank
+        var effectiveReserve = Math.min(gardenReserve, cookies * 0.6);
+        var effectiveCookies = Math.max(0, cookies - effectiveReserve);
 
         // Find ALL options
         var bestUpgrade = this._findBestUpgrade(effectiveCookies, cps);
