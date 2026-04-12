@@ -1,0 +1,72 @@
+"""REST API routes for game state, config, and stats."""
+
+from fastapi import APIRouter, Request
+from ...utils.database import get_recent_snapshots, get_recent_actions
+
+router = APIRouter()
+
+
+@router.get("/status")
+async def get_status(request: Request):
+    """Current game state from the bot."""
+    service = request.app.state.game_service
+    return service.latest_state or {"error": "No data yet"}
+
+
+@router.get("/config")
+async def get_config(request: Request):
+    """Current bot configuration."""
+    service = request.app.state.game_service
+    return service.config.to_dict()
+
+
+@router.post("/config")
+async def update_config(request: Request):
+    """Update bot configuration."""
+    data = await request.json()
+    service = request.app.state.game_service
+    bridge = request.app.state.game_bridge
+
+    for key, value in data.items():
+        if hasattr(service.config, key):
+            setattr(service.config, key, value)
+
+    # Push config to the JS bot
+    bridge.set_config(data)
+
+    return service.config.to_dict()
+
+
+@router.get("/history")
+async def get_history(request: Request):
+    """CPS and cookie history for charts."""
+    db_path = request.app.state.db_path
+    snapshots = get_recent_snapshots(db_path, limit=500)
+    return snapshots
+
+
+@router.get("/actions")
+async def get_actions(request: Request):
+    """Recent bot actions."""
+    bridge = request.app.state.game_bridge
+    try:
+        actions = bridge.get_action_log(100)
+        return actions or []
+    except Exception:
+        return []
+
+
+@router.post("/save")
+async def trigger_save(request: Request):
+    """Manually save the game."""
+    bridge = request.app.state.game_bridge
+    filepath = bridge.save_to_file()
+    return {"saved": filepath}
+
+
+@router.post("/ascend")
+async def trigger_ascend(request: Request):
+    """Manually trigger ascension."""
+    bridge = request.app.state.game_bridge
+    bridge.trigger_ascension()
+    return {"status": "ascending"}

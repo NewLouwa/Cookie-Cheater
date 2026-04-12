@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.deps_installed
+.browser_profile/
+saves/
+*.db
+.claude/

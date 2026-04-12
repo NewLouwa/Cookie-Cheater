@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CookieCheater Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>CookieCheater</h1>
+            <div class="status-bar">
+                <span id="connection-status" class="tag tag-red">Disconnected</span>
+                <span id="uptime"></span>
+                <span id="phase" class="tag"></span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- Main Stats -->
+            <div class="card stats-card">
+                <h2>Production</h2>
+                <div class="stat-grid">
+                    <div class="stat">
+                        <label>Cookies</label>
+                        <span id="cookies">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>CPS</label>
+                        <span id="cps">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Click CPS</label>
+                        <span id="click-cps">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Prestige</label>
+                        <span id="prestige">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Heavenly Chips</label>
+                        <span id="heavenly-chips">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Sugar Lumps</label>
+                        <span id="lumps">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Stats -->
+            <div class="card">
+                <h2>Bot Activity</h2>
+                <div class="stat-grid">
+                    <div class="stat">
+                        <label>Total Clicks</label>
+                        <span id="total-clicks">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Golden Cookies</label>
+                        <span id="golden-clicked">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Buildings Bought</label>
+                        <span id="buildings-bought">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Upgrades Bought</label>
+                        <span id="upgrades-bought">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Ascensions</label>
+                        <span id="ascensions">0</span>
+                    </div>
+                    <div class="stat">
+                        <label>Season</label>
+                        <span id="season">none</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Buffs -->
+            <div class="card">
+                <h2>Active Buffs</h2>
+                <div id="buffs-list" class="buffs-list">
+                    <span class="dim">None</span>
+                </div>
+            </div>
+
+            <!-- Buildings -->
+            <div class="card buildings-card">
+                <h2>Buildings</h2>
+                <table id="buildings-table">
+                    <thead>
+                        <tr>
+                            <th>Building</th>
+                            <th>Count</th>
+                            <th>Total CPS</th>
+                            <th>Next Price</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Stock Market (Hidden Data!) -->
+            <div class="card market-card">
+                <h2>Stock Market (Hidden Data)</h2>
+                <div id="market-info" class="market-info">
+                    <span class="dim">Market not loaded</span>
+                </div>
+                <table id="market-table">
+                    <thead>
+                        <tr>
+                            <th>Good</th>
+                            <th>Price</th>
+                            <th>Rest</th>
+                            <th>Ratio</th>
+                            <th>Mode</th>
+                            <th>Dur</th>
+                            <th>Delta</th>
+                            <th>Stock</th>
+                            <th>Buy/Sell</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- CPS Chart -->
+            <div class="card chart-card">
+                <h2>CPS History</h2>
+                <canvas id="cps-chart"></canvas>
+            </div>
+
+            <!-- Action Log -->
+            <div class="card log-card">
+                <h2>Action Log</h2>
+                <div id="action-log" class="log"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="card">
+                <h2>Controls</h2>
+                <div class="controls">
+                    <button onclick="saveGame()">Save Game</button>
+                    <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
