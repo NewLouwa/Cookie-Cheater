@@ -8,4 +8,4 @@ router = APIRouter()
 @router.get("/")
 async def index(request: Request):
     templates = request.app.state.templates
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")

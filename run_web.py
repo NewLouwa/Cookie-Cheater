@@ -32,7 +32,7 @@ console = Console()
 def main():
     parser = argparse.ArgumentParser(description="CookieCheater - Cookie Clicker Bot Dashboard")
     parser.add_argument("--port", type=int, default=9222, help="Chrome debug port (default: 9222)")
-    parser.add_argument("--web-port", type=int, default=8000, help="Web UI port (default: 8000)")
+    parser.add_argument("--web-port", type=int, default=8080, help="Web UI port (default: 8080)")
     parser.add_argument("--no-launch", action="store_true", help="Don't auto-launch browser")
     parser.add_argument("--interval", type=int, default=2, help="Poll interval in seconds (default: 2)")
     parser.add_argument("--db", type=str, default="cheater.db", help="Database path (default: cheater.db)")
