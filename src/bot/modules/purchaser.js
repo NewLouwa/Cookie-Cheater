@@ -21,19 +21,16 @@ CookieCheater.modules.purchaser = {
             return;
         }
 
-        // === LUCKY BANKING ===
-        // Keep enough cookies to maximize Lucky golden cookie payouts
+        // === LUCKY BANKING (soft reserve) ===
         // Lucky gives min(900*CPS, 15% of bank). To max: bank >= 6000*CPS
+        // But we NEVER fully stall — still buy if the purchase pays back fast.
+        // The bank fills naturally as CPS grows; blocking purchases slows CPS growth.
         var luckyBank = CookieCheater.getLuckyBank();
-        var spendable = cookies - luckyBank;
+        var belowBank = cookies < luckyBank;
 
-        // In mid+ game, respect Lucky bank (don't spend below it)
-        if (CookieCheater.getPhase() !== "early" && spendable < 0) {
-            this.currentPhase = "Lucky banking (" + Math.ceil(-spendable / cps) + "s)";
-            return;
-        }
-        // Use spendable cookies for affordability checks
-        var effectiveCookies = CookieCheater.getPhase() === "early" ? cookies : Math.max(cookies, spendable);
+        // Use real cookies for finding options (not spendable)
+        // Lucky banking is a soft preference, not a hard block
+        var effectiveCookies = cookies;
 
         // Find ALL options
         var bestUpgrade = this._findBestUpgrade(effectiveCookies, cps);
@@ -69,21 +66,48 @@ CookieCheater.modules.purchaser = {
             return;
         }
 
-        // Buy the best affordable upgrade if it beats best affordable building
+        // === LUCKY BANK SOFT CHECK ===
+        // If below Lucky bank AND the best purchase costs >50% of bank target
+        // AND payback is slow (>300s), defer it. Otherwise buy anyway.
+        var bestToBuy = null;
+        var bestToBuyType = null;
+
         if (bestUpgrade && bestUpgrade.affordable) {
             var buildingPayback = bestAffordableBuilding ? bestAffordableBuilding.payback : Infinity;
             if (bestUpgrade.payback <= buildingPayback) {
+                bestToBuy = bestUpgrade;
+                bestToBuyType = "upgrade";
+            }
+        }
+        if (!bestToBuy && bestAffordableBuilding) {
+            bestToBuy = bestAffordableBuilding;
+            bestToBuyType = "building";
+        }
+
+        if (bestToBuy && belowBank) {
+            var costRatio = bestToBuy.price / Math.max(luckyBank, 1);
+            var rawPayback = bestToBuy.payback * (bestToBuy.priority || 1);
+            // Only defer if: expensive (>50% of bank) AND slow payback (>300s)
+            // Otherwise the growth from buying outweighs the Lucky bank benefit
+            if (costRatio > 0.5 && rawPayback > 300) {
+                this.currentPhase = "Lucky bank (" + Math.round(cookies / luckyBank * 100) + "%) — deferring " + bestToBuy.name;
+                return;
+            }
+        }
+
+        // Buy the best affordable upgrade if it beats best affordable building
+        if (bestToBuyType === "upgrade" && bestUpgrade) {
                 bestUpgrade.ref.buy();
                 CookieCheater.stats.upgradesBought++;
                 var cat = bestUpgrade.category || "?";
                 var reason = bestUpgrade.name + " [" + cat + "] $" + this._fmt(bestUpgrade.price) +
                     " — payback " + Math.round(bestUpgrade.payback * (bestUpgrade.priority || 1)) + "s" +
-                    (bestUpgrade.priority > 1.5 ? " (priority x" + bestUpgrade.priority + "!)" : "");
+                    (bestUpgrade.priority > 1.5 ? " (priority x" + bestUpgrade.priority + "!)" : "") +
+                    (belowBank ? " (Lucky bank " + Math.round(cookies / luckyBank * 100) + "%, but good ROI)" : "");
                 CookieCheater.justify("purchaser", "BUY_UPGRADE", reason);
                 this._lastPurchaseTime = Date.now();
                 this.currentPhase = "bought upgrade: " + bestUpgrade.name;
                 return;
-            }
         }
 
         // Buy the best affordable building
@@ -95,8 +119,8 @@ CookieCheater.modules.purchaser = {
             var bPb = Math.round(bestAffordableBuilding.payback);
             CookieCheater.justify("purchaser", "BUY_BUILDING",
                 bName + " #" + bAmt + " $" + this._fmt(bestAffordableBuilding.price) +
-                " — best ROI (payback " + bPb + "s), beats " +
-                (bestUpgrade ? bestUpgrade.name + " (" + Math.round(bestUpgrade.payback) + "s)" : "no upgrades"));
+                " — best ROI (payback " + bPb + "s)" +
+                (belowBank ? " (Lucky bank " + Math.round(cookies / luckyBank * 100) + "%, but growing CPS is more important)" : ""));
             this._lastPurchaseTime = Date.now();
             this.currentPhase = "bought: " + bName;
             return;
