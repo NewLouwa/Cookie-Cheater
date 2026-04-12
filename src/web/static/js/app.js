@@ -178,6 +178,9 @@ function updateDashboard(data) {
     // Sugar lump approval card
     updateLumpCard(data.lumpProposal);
 
+    // Garden grid
+    if (data.gardenInfo) updateGardenGrid(data.gardenInfo);
+
     // Minigame status
     if (data.gardenPhase) {
         document.getElementById('garden-phase').textContent = data.gardenPhase;
@@ -313,6 +316,58 @@ function initChart() {
             animation: false,
         }
     });
+}
+
+function updateGardenGrid(info) {
+    // Header info
+    document.getElementById('garden-phase-tag').textContent = info.phase || '';
+    document.getElementById('garden-seeds').textContent = (info.seedsUnlocked || 0) + '/' + (info.seedsTotal || 34) + ' seeds';
+    document.getElementById('garden-soil').textContent = 'Soil: ' + (info.soil || '?');
+    const mut = info.nextMutation;
+    document.getElementById('garden-mutation').textContent = mut
+        ? 'Target: ' + mut.child + ' (' + (mut.chance * 100) + '%/tick)'
+        : '';
+
+    // Build 6x6 grid
+    const grid = document.getElementById('garden-grid');
+    const tiles = info.tiles || [];
+    const goals = info.tileGoals || {};
+
+    // Create a map of tiles by position
+    const tileMap = {};
+    tiles.forEach(t => { tileMap[t.x + ',' + t.y] = t; });
+
+    let html = '';
+    for (let y = 0; y < 6; y++) {
+        for (let x = 0; x < 6; x++) {
+            const key = x + ',' + y;
+            const t = tileMap[key];
+            const goal = goals[key];
+
+            if (!t) {
+                // Locked tile
+                html += '<div class="garden-tile locked"></div>';
+                continue;
+            }
+
+            if (t.empty) {
+                const isTarget = goal && goal.goal === 'mutation_target';
+                html += `<div class="garden-tile ${isTarget ? 'mutation-target' : 'empty'}" title="${isTarget ? 'Mutation target: ' + (goal.targetChild || '?') : 'Empty'}">
+                    ${isTarget ? '<span class="tile-name" style="color:#fbbf24">?</span>' : ''}
+                </div>`;
+            } else {
+                const cls = t.mature ? 'mature' : 'planted';
+                const shortName = (t.plant || '?').split(' ').map(w => w[0]).join('').substring(0, 3);
+                const goalTag = goal ? (goal.goal === 'mutation_parent' ? 'MP' : goal.goal === 'farming' ? 'F' : '') : '';
+                html += `<div class="garden-tile ${cls}" title="${t.plant} — age ${t.pct}%${t.mature ? ' MATURE' : ''} ${goal ? '('+goal.goal+')' : ''}">
+                    <span class="tile-name">${shortName}</span>
+                    ${goalTag ? '<span class="tile-goal">' + goalTag + '</span>' : ''}
+                    <div class="tile-bar"><div class="tile-bar-fill" style="width:${t.pct}%;background:${t.mature ? '#4ade80' : '#60a5fa'}"></div></div>
+                </div>`;
+            }
+        }
+    }
+    grid.innerHTML = html;
 }
 
 function updateLumpCard(proposal) {

@@ -318,6 +318,51 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle:hover { border-color: var(--dim); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
+/* Garden grid */
+.garden-card { grid-column: span 2; }
+.garden-info-row { display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.78rem; }
+.garden-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    max-width: 360px;
+}
+.garden-tile {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+}
+.garden-tile.empty { background: var(--accent2); }
+.garden-tile.planted { background: #1a3a1a; border: 1px solid #2d5a2d; }
+.garden-tile.mature { background: #2d5a1a; border: 1px solid #4ade80; }
+.garden-tile.locked { background: var(--bg); opacity: 0.3; }
+.garden-tile.mutation-target { background: #3a2a1a; border: 1px dashed #fbbf24; }
+
+.garden-tile .tile-name { font-size: 0.55rem; text-align: center; line-height: 1.1; }
+.garden-tile .tile-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--bg);
+}
+.garden-tile .tile-bar-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.3s;
+}
+.garden-tile .tile-goal {
+    position: absolute;
+    top: 1px; right: 2px;
+    font-size: 0.45rem;
+    color: var(--yellow);
+}
+
 /* Sugar Lump approval card */
 .lump-card { border-color: var(--yellow); }
 .lump-header { font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--dim); }

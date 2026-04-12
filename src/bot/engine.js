@@ -239,6 +239,7 @@ var CookieCheater = window.CookieCheater = {
             lumpProposal: CookieCheater._lumpProposal || null,
             grimoire: CookieCheater._grimoire || null,
             gardenPhase: CookieCheater.modules.garden ? CookieCheater.modules.garden._phase : null,
+            gardenInfo: CookieCheater._gardenInfo || null,
         };
     },
 
