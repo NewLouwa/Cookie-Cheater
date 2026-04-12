@@ -402,6 +402,46 @@ button:hover { background: var(--accent); border-color: var(--accent); }
     color: var(--yellow);
 }
 
+/* Garden strategy panel */
+.gs-goal {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(74, 222, 128, 0.08);
+    border-left: 3px solid var(--green);
+    border-radius: 0.2rem;
+}
+
+.gs-section { margin-bottom: 0.5rem; }
+.gs-text { font-size: 0.82rem; color: var(--text); line-height: 1.5; }
+
+.gs-roadmap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.gs-mutation {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 0.2rem;
+}
+.gs-mutation.unlocked { color: var(--green); }
+.gs-mutation.available { color: var(--yellow); background: rgba(251, 191, 36, 0.08); }
+.gs-mutation.locked { color: var(--dim); }
+
+.gs-mutation .gs-check { min-width: 18px; text-align: center; }
+.gs-mutation .gs-child { font-weight: 600; min-width: 110px; }
+.gs-mutation .gs-parents { color: var(--dim); }
+.gs-mutation .gs-chance { margin-left: auto; font-size: 0.7rem; }
+
 .garden-legend {
     display: flex;
     gap: 1rem;

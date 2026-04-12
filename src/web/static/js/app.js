@@ -328,6 +328,35 @@ function updateGardenGrid(info) {
         ? 'Target: ' + mut.child + ' (' + (mut.chance * 100) + '%/tick)'
         : '';
 
+    // Strategy panel
+    const strat = info.strategy;
+    if (strat) {
+        document.getElementById('gs-goal').textContent = strat.goal || '';
+        document.getElementById('gs-why').textContent = strat.why || '';
+        document.getElementById('gs-next').textContent = strat.nextStep || '';
+        document.getElementById('gs-soil').textContent = strat.soilReason || '';
+
+        // Mutation roadmap
+        const roadmapEl = document.getElementById('gs-roadmap');
+        if (strat.roadmap && strat.roadmap.length > 0) {
+            roadmapEl.innerHTML = strat.roadmap.map(m => {
+                const cls = m.unlocked ? 'unlocked' : m.available ? 'available' : 'locked';
+                const icon = m.unlocked ? '&#10003;' : m.available ? '&#9658;' : '&#9679;';
+                const parents = m.parents[0] === m.parents[1]
+                    ? m.parents[0] + ' x2'
+                    : m.parents[0] + ' + ' + m.parents[1];
+                return `<div class="gs-mutation ${cls}">
+                    <span class="gs-check">${icon}</span>
+                    <span class="gs-child">${m.child}</span>
+                    <span class="gs-parents">${parents}</span>
+                    <span class="gs-chance">${(m.chance * 100)}%</span>
+                </div>`;
+            }).join('');
+        } else {
+            roadmapEl.innerHTML = '<span class="dim">No mutation data</span>';
+        }
+    }
+
     // Build 6x6 grid
     const grid = document.getElementById('garden-grid');
     const tiles = info.tiles || [];

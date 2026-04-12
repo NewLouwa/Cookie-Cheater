@@ -391,17 +391,135 @@ CookieCheater.modules.garden = {
     // ============================
     _exposeState: function(M, farm) {
         var unlocked = this._getUnlockedSeeds(M);
+        var nextMut = this._getNextMutationTarget(M);
+        var soilNames = ["Dirt", "Fertilizer", "Clay", "Pebbles", "Wood Chips"];
+        var soilName = soilNames[M.soil] || "?";
+
+        // Build strategy explanation
+        var strat = this._buildStrategyExplanation(M, farm, unlocked, nextMut, soilName);
+
         CookieCheater._gardenInfo = {
             phase: this._phase,
-            soil: ["Dirt", "Fertilizer", "Clay", "Pebbles", "Wood Chips"][M.soil] || "?",
+            soil: soilName,
             seedsUnlocked: unlocked.length,
             seedsTotal: M.plantsById.length,
             seeds: unlocked,
             tiles: this._gardenState ? this._gardenState.tiles : [],
             tileGoals: this._tileGoals,
             farmLevel: farm.level || 0,
-            nextMutation: this._getNextMutationTarget(M),
+            nextMutation: nextMut,
+            strategy: strat,
         };
+    },
+
+    _buildStrategyExplanation: function(M, farm, unlocked, nextMut, soilName) {
+        var s = {};
+        var emptyTiles = this._getEmptyUnlockedTiles(M).length;
+        var totalTiles = 0;
+        for (var y = 0; y < 6; y++)
+            for (var x = 0; x < 6; x++)
+                if (M.isTileUnlocked(x, y)) totalTiles++;
+
+        // Current goal
+        switch (this._phase) {
+            case "wheat_fill":
+                s.goal = "Fill garden with Baker's Wheat";
+                s.why = "Only seed available. Each wheat gives +1% CPS. Filling all " + totalTiles + " tiles for passive boost.";
+                s.nextStep = emptyTiles > 0
+                    ? "Planting " + emptyTiles + " more wheat (need " + CookieCheater.modules.purchaser._fmt(CookieCheater._gardenReserve || 0) + " cookies)"
+                    : "All tiles planted. Waiting for wheat to mature, then harvest for +1% CPS each.";
+                s.soilReason = "Fertilizer: faster tick speed (3 min vs 5) so wheat grows quicker.";
+                break;
+
+            case "mutating":
+                s.goal = "Discover new seeds via mutation";
+                if (nextMut) {
+                    s.why = "Trying to breed " + nextMut.child + " by planting " + nextMut.parents[0] +
+                        (nextMut.parents[0] === nextMut.parents[1] ? " (x2)" : " + " + nextMut.parents[1]) +
+                        " next to each other. " + (nextMut.chance * 100) + "% chance per empty neighbor per tick.";
+                    s.nextStep = "Waiting for both parents to MATURE (growth bar must be full). " +
+                        "Once mature, every adjacent empty tile has a " + (nextMut.chance * 100) + "% chance " +
+                        (M.soil === 4 ? "(x3 with Wood Chips = " + (nextMut.chance * 300) + "%!) " : "") +
+                        "each game tick to spawn " + nextMut.child + ".";
+                } else {
+                    s.why = "Looking for mutation recipes we can attempt with current seeds.";
+                    s.nextStep = "No viable mutation found with current seeds. Farming for CPS instead.";
+                }
+                s.soilReason = farm.amount >= 300
+                    ? "Wood Chips: 3x mutation rate! Best soil for discovering new seeds."
+                    : farm.amount >= 50
+                        ? "Fertilizer: faster growth until we have 300 farms for Wood Chips."
+                        : "Dirt: need more farms to unlock better soils.";
+                break;
+
+            case "bakeberry":
+                s.goal = "Farm Bakeberry for cookies + permanent upgrades";
+                s.why = "Bakeberry gives +1% CPS while growing. Harvesting mature Bakeberry gives +30 min of CPS (max 3% bank). " +
+                    "Also 1.5% chance to drop 'Bakeberry Cookies' permanent upgrade (+2% CPS forever).";
+                s.nextStep = emptyTiles > 0
+                    ? "Planting " + emptyTiles + " more Bakeberry."
+                    : "All tiles planted. Watching growth — will harvest when mature for cookie payout.";
+                s.soilReason = "Clay: +25% plant efficiency and slower growth means longer mature window for better harvests.";
+                break;
+
+            case "queenbeet":
+                s.goal = "Breed Juicy Queenbeet for sugar lumps";
+                s.why = "8 Queenbeet in a ring pattern. When all 8 are mature, center tile has 0.1% chance per tick " +
+                    (M.soil === 4 ? "(x3 with Wood Chips = 0.3%!) " : "") +
+                    "to spawn Juicy Queenbeet. Harvesting it gives +1 sugar lump!";
+                var matureRing = 0, totalRing = 0;
+                for (var key in this._tileGoals) {
+                    var g = this._tileGoals[key];
+                    if (g.goal === "mutation_parent") {
+                        totalRing++;
+                        var parts = key.split(",");
+                        var tx = parseInt(parts[0]), ty = parseInt(parts[1]);
+                        if (M.plot[ty] && M.plot[ty][tx] && M.plot[ty][tx][0] > 0) {
+                            var plant = M.plantsById[M.plot[ty][tx][0] - 1];
+                            if (plant && M.plot[ty][tx][1] >= (plant.mature || 0.5) * 100) matureRing++;
+                        }
+                    }
+                }
+                s.nextStep = matureRing >= totalRing && totalRing > 0
+                    ? "All " + totalRing + " Queenbeet are MATURE! Waiting for Juicy Queenbeet mutation..."
+                    : matureRing + "/" + totalRing + " Queenbeet mature. Waiting for the rest to grow.";
+                s.soilReason = "Wood Chips: 3x mutation rate for maximum Juicy Queenbeet chance.";
+                break;
+
+            case "sacrifice":
+                s.goal = "Garden sacrifice available!";
+                s.why = "All 34 seeds discovered. Sacrificing destroys all plants and seeds (except Baker's Wheat) " +
+                    "but gives 10 sugar lumps + 'Seedless to nay' achievement (5% cheaper seeds, 5% faster maturity, 5% more upgrade drops).";
+                s.nextStep = "Click Sacrifice in the game garden panel when ready. Can be repeated.";
+                s.soilReason = "N/A";
+                break;
+
+            default:
+                s.goal = "Initializing...";
+                s.why = "Waiting for garden data.";
+                s.nextStep = "Will start planting shortly.";
+                s.soilReason = "";
+        }
+
+        // Upcoming mutations roadmap
+        s.roadmap = [];
+        if (CookieCheater.KB && CookieCheater.KB.garden) {
+            var mutations = CookieCheater.KB.garden.mutationPath;
+            for (var m = 0; m < mutations.length; m++) {
+                var mut = mutations[m];
+                var has = this._hasSeed(M, mut.child);
+                var canDo = !has && this._findSeed(M, mut.parents[0]) >= 0 && this._findSeed(M, mut.parents[1]) >= 0;
+                s.roadmap.push({
+                    child: mut.child,
+                    parents: mut.parents,
+                    chance: mut.chance,
+                    unlocked: has,
+                    available: canDo,
+                });
+            }
+        }
+
+        return s;
     },
 
     _getNextMutationTarget: function(M) {

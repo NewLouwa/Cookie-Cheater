@@ -162,8 +162,33 @@
         <!-- ==================== TAB: GARDEN ==================== -->
         <div class="tab-content" id="tab-garden">
             <div class="grid">
-                <div class="card" style="grid-column:span 2">
-                    <h2>Garden <span class="dim" id="garden-phase-tag"></span></h2>
+                <!-- Garden Strategy -->
+                <div class="card">
+                    <h2>Garden Strategy</h2>
+                    <div id="garden-strategy">
+                        <div class="gs-goal" id="gs-goal"></div>
+                        <div class="gs-section">
+                            <label class="section-label">Why</label>
+                            <div id="gs-why" class="gs-text"></div>
+                        </div>
+                        <div class="gs-section">
+                            <label class="section-label">Next Step</label>
+                            <div id="gs-next" class="gs-text"></div>
+                        </div>
+                        <div class="gs-section">
+                            <label class="section-label">Soil Choice</label>
+                            <div id="gs-soil" class="gs-text"></div>
+                        </div>
+                        <div class="gs-section">
+                            <label class="section-label">Mutation Roadmap</label>
+                            <div id="gs-roadmap" class="gs-roadmap"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Garden Grid -->
+                <div class="card">
+                    <h2>Garden Plot <span class="dim" id="garden-phase-tag"></span></h2>
                     <div class="garden-info-row">
                         <span id="garden-seeds" class="dim"></span>
                         <span id="garden-soil" class="dim"></span>
