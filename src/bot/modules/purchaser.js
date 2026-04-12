@@ -21,9 +21,23 @@ CookieCheater.modules.purchaser = {
             return;
         }
 
+        // === LUCKY BANKING ===
+        // Keep enough cookies to maximize Lucky golden cookie payouts
+        // Lucky gives min(900*CPS, 15% of bank). To max: bank >= 6000*CPS
+        var luckyBank = CookieCheater.getLuckyBank();
+        var spendable = cookies - luckyBank;
+
+        // In mid+ game, respect Lucky bank (don't spend below it)
+        if (CookieCheater.getPhase() !== "early" && spendable < 0) {
+            this.currentPhase = "Lucky banking (" + Math.ceil(-spendable / cps) + "s)";
+            return;
+        }
+        // Use spendable cookies for affordability checks
+        var effectiveCookies = CookieCheater.getPhase() === "early" ? cookies : Math.max(cookies, spendable);
+
         // Find ALL options
-        var bestUpgrade = this._findBestUpgrade(cookies, cps);
-        var buildings = this._rankBuildings(cookies, cps);
+        var bestUpgrade = this._findBestUpgrade(effectiveCookies, cps);
+        var buildings = this._rankBuildings(effectiveCookies, cps);
         var bestAffordableBuilding = buildings.affordable;
         var bestOverallBuilding = buildings.overall;
 

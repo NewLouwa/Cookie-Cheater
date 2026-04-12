@@ -46,28 +46,56 @@ function formatNumber(n) {
 }
 
 function formatTime(seconds) {
+    if (seconds < 60) return seconds + 's';
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return `${h}h ${m}m ${s}s`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m ${s}s`;
 }
 
 function updateDashboard(data) {
-    // Stats
+    // Top metrics
     document.getElementById('cookies').textContent = formatNumber(data.cookies);
     document.getElementById('cps').textContent = formatNumber(data.cps) + '/s';
-    document.getElementById('click-cps').textContent = formatNumber(data.clickCps);
     document.getElementById('prestige').textContent = formatNumber(data.prestige);
     document.getElementById('heavenly-chips').textContent = formatNumber(data.heavenlyChips);
     document.getElementById('lumps').textContent = data.lumps || 0;
     document.getElementById('season').textContent = data.season || 'none';
 
-    // Phase
+    // Lucky bank bar
+    const luckyPct = data.luckyBankPct || 0;
+    const luckyBar = document.getElementById('lucky-bar');
+    const luckyText = document.getElementById('lucky-text');
+    luckyBar.style.width = Math.min(100, luckyPct) + '%';
+    luckyText.textContent = luckyPct + '%';
+    if (luckyPct >= 100) {
+        luckyBar.style.background = 'linear-gradient(90deg, #4ade80, #86efac)';
+    } else if (luckyPct >= 50) {
+        luckyBar.style.background = 'linear-gradient(90deg, #fbbf24, #fcd34d)';
+    } else {
+        luckyBar.style.background = 'linear-gradient(90deg, #f87171, #fca5a5)';
+    }
+
+    // Combo indicator
+    const comboMetric = document.getElementById('combo-metric');
+    if (data.comboActive && data.comboScore > 1) {
+        comboMetric.style.display = '';
+        document.getElementById('combo-score').textContent = 'x' + formatNumber(data.comboScore);
+    } else {
+        comboMetric.style.display = 'none';
+    }
+
+    // Phase tag
     const phaseEl = document.getElementById('phase');
     phaseEl.textContent = data.phase || 'unknown';
-    phaseEl.className = 'tag tag-' + ({
-        early: 'yellow', mid: 'blue', late: 'green', endgame: 'red'
-    }[data.phase] || 'yellow');
+    phaseEl.className = 'tag tag-' + ({ early: 'yellow', mid: 'blue', late: 'green', endgame: 'red' }[data.phase] || 'yellow');
+
+    // Purchaser phase
+    const ppEl = document.getElementById('purchaser-phase');
+    if (data.purchaserPhase) {
+        ppEl.textContent = data.purchaserPhase;
+    }
 
     // Uptime
     if (data.uptime !== undefined) {
@@ -87,11 +115,11 @@ function updateDashboard(data) {
     const buffsEl = document.getElementById('buffs-list');
     if (data.buffs && data.buffs.length > 0) {
         buffsEl.innerHTML = data.buffs.map(b => {
-            const timeLeft = Math.ceil(b.time / Game?.fps || 30);
+            let cls = 'buff';
             let info = b.name;
-            if (b.multCpS > 1) info += ` (x${b.multCpS} CPS)`;
-            if (b.multClick > 1) info += ` (x${b.multClick} Click)`;
-            return `<span class="buff">${info}</span>`;
+            if (b.multClick > 1) { cls += ' buff-click'; info += ` (x${b.multClick})`; }
+            else if (b.multCpS > 1) { cls += ' buff-cps'; info += ` (x${b.multCpS})`; }
+            return `<span class="${cls}">${info}</span>`;
         }).join('');
     } else {
         buffsEl.innerHTML = '<span class="dim">None</span>';
@@ -102,45 +130,44 @@ function updateDashboard(data) {
         const tbody = document.querySelector('#buildings-table tbody');
         tbody.innerHTML = data.buildings
             .filter(b => !b.locked && b.amount > 0)
-            .map(b => `
-                <tr>
-                    <td>${b.name}</td>
-                    <td>${b.amount}</td>
-                    <td>${formatNumber(b.totalCps)}/s</td>
-                    <td>${formatNumber(b.price)}</td>
-                </tr>
-            `).join('');
+            .map(b => `<tr>
+                <td>${b.name}</td>
+                <td>${b.amount}</td>
+                <td>${formatNumber(b.totalCps)}/s</td>
+                <td>${formatNumber(b.price)}</td>
+            </tr>`).join('');
     }
 
-    // Stock Market (hidden data!)
+    // Stock Market
     if (data.market) {
         const mInfo = document.getElementById('market-info');
         mInfo.innerHTML = `
             <span><span class="mi-label">Brokers:</span> <span class="mi-value">${data.market.brokers}</span></span>
-            <span><span class="mi-label">Overhead:</span> <span class="mi-value">${data.market.overhead}%</span></span>
-            <span><span class="mi-label">Profit:</span> <span class="mi-value">$${data.market.profit}</span></span>
-            <span><span class="mi-label">Office Lv:</span> <span class="mi-value">${data.market.officeLevel}</span></span>
+            <span><span class="mi-label">OH:</span> <span class="mi-value">${data.market.overhead}%</span></span>
+            <span><span class="mi-label">Profit:</span> <span class="mi-value ${data.market.profit >= 0 ? 'mode-rise' : 'mode-fall'}">$${data.market.profit}</span></span>
+            <span><span class="mi-label">Office:</span> <span class="mi-value">${data.market.officeLevel}</span></span>
         `;
 
         const mtbody = document.querySelector('#market-table tbody');
         mtbody.innerHTML = data.market.goods.map(g => {
-            const modeClass = g.modeId <= 0 ? 'mode-stable' :
+            const modeClass = g.modeId === 0 ? 'mode-stable' :
                               g.modeId === 1 || g.modeId === 3 ? 'mode-rise' :
                               g.modeId === 2 || g.modeId === 4 ? 'mode-fall' : 'mode-chaotic';
             const ratioClass = g.ratio < 30 ? 'ratio-great' :
                                g.ratio < 60 ? 'ratio-good' :
                                g.ratio < 120 ? 'ratio-neutral' :
                                g.ratio < 180 ? 'ratio-warn' : 'ratio-danger';
+            const deltaSign = g.delta > 0 ? '+' : '';
+            const held = g.stock > 0 ? `<strong>${g.stock}</strong>/${g.maxStock}` : `0/${g.maxStock}`;
             return `<tr>
-                <td title="${g.name}">${g.symbol}</td>
+                <td title="${g.name}"><strong>${g.symbol}</strong></td>
                 <td>$${g.val}</td>
-                <td>$${g.restingVal}</td>
+                <td class="dim">$${g.restingVal}</td>
                 <td class="${ratioClass}">${g.ratio}%</td>
                 <td class="${modeClass}">${g.mode}</td>
-                <td>${g.dur}t</td>
-                <td>${g.delta > 0 ? '+' : ''}${g.delta}</td>
-                <td>${g.stock}/${g.maxStock}</td>
-                <td>$${g.buyPrice} / $${g.sellPrice}</td>
+                <td>${g.dur}</td>
+                <td class="${g.delta > 0 ? 'mode-rise' : g.delta < 0 ? 'mode-fall' : ''}">${deltaSign}${g.delta}</td>
+                <td>${held}</td>
             </tr>`;
         }).join('');
     }
@@ -153,7 +180,9 @@ function updateChart(cps) {
     if (!cpsChart) initChart();
 
     const now = new Date();
-    const label = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+    const label = String(now.getHours()).padStart(2, '0') + ':' +
+                  String(now.getMinutes()).padStart(2, '0') + ':' +
+                  String(now.getSeconds()).padStart(2, '0');
 
     cpsData.push({ label, value: cps });
     if (cpsData.length > MAX_CHART_POINTS) cpsData.shift();
@@ -173,11 +202,11 @@ function initChart() {
                 label: 'CPS',
                 data: [],
                 borderColor: '#e94560',
-                backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                backgroundColor: 'rgba(233, 69, 96, 0.08)',
                 fill: true,
                 tension: 0.3,
                 pointRadius: 0,
-                borderWidth: 2,
+                borderWidth: 1.5,
             }]
         },
         options: {
@@ -186,28 +215,23 @@ function initChart() {
             scales: {
                 x: {
                     display: true,
-                    ticks: { color: '#888', maxTicksLimit: 10 },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#6b6b8a', maxTicksLimit: 8, font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
                 },
                 y: {
                     display: true,
-                    ticks: {
-                        color: '#888',
-                        callback: v => formatNumber(v)
-                    },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#6b6b8a', callback: v => formatNumber(v), font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
                     type: 'logarithmic',
                 }
             },
-            plugins: {
-                legend: { display: false },
-            },
+            plugins: { legend: { display: false } },
             animation: false,
         }
     });
 }
 
-// API calls
+// === API calls ===
 let botRunning = true;
 
 async function toggleBot() {
@@ -218,9 +242,8 @@ async function toggleBot() {
 }
 
 async function reinjectBot() {
-    if (!confirm('Re-inject bot? This will reset all module state.')) return;
-    const res = await fetch('/api/bot/reinject', { method: 'POST' });
-    const data = await res.json();
+    if (!confirm('Re-inject bot? This resets all module state.')) return;
+    await fetch('/api/bot/reinject', { method: 'POST' });
     botRunning = true;
     document.getElementById('btn-startstop').textContent = 'Stop Bot';
 }
@@ -234,17 +257,20 @@ async function toggleModule(key, enabled) {
 }
 
 async function saveGame() {
+    const btn = event.target;
+    btn.textContent = 'Saving...';
     const res = await fetch('/api/save', { method: 'POST' });
     const data = await res.json();
-    alert('Game saved: ' + (data.saved || 'OK'));
+    btn.textContent = 'Saved!';
+    setTimeout(() => btn.textContent = 'Save', 2000);
 }
 
 async function triggerAscend() {
-    if (!confirm('Are you sure you want to ascend?')) return;
+    if (!confirm('Ascend now? This resets your current run.')) return;
     await fetch('/api/ascend', { method: 'POST' });
 }
 
-// Fetch and display action log periodically
+// Action log refresh
 async function refreshActionLog() {
     try {
         const res = await fetch('/api/actions');
@@ -252,12 +278,10 @@ async function refreshActionLog() {
         const logEl = document.getElementById('action-log');
 
         if (Array.isArray(actions) && actions.length > 0) {
-            logEl.innerHTML = actions.slice(-50).map(a => {
-                // a.time is unix ms timestamp from JS Date.now()
+            logEl.innerHTML = actions.slice(-60).map(a => {
                 const t = new Date(a.time).toLocaleTimeString();
-                const moduleClass = a.module === 'market' ? 'module market' :
-                                    a.module === 'purchaser' ? 'module purchaser' : 'module';
-                return `<div class="entry"><span class="time">${t}</span><span class="${moduleClass}">[${a.module}]</span> <span class="action">${a.action}</span> ${a.detail || ''}</div>`;
+                const modCls = { market: 'module market', purchaser: 'module purchaser' }[a.module] || 'module';
+                return `<div class="entry"><span class="time">${t}</span><span class="${modCls}">[${a.module}]</span> <span class="action">${a.action}</span> ${a.detail || ''}</div>`;
             }).join('');
             logEl.scrollTop = logEl.scrollHeight;
         }
@@ -266,4 +290,4 @@ async function refreshActionLog() {
 
 // Init
 connect();
-setInterval(refreshActionLog, 5000);
+setInterval(refreshActionLog, 3000);

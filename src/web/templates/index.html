@@ -3,71 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CookieCheater Dashboard</title>
+    <title>CookieCheater</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
     <div id="app">
         <header>
-            <h1>CookieCheater</h1>
+            <div class="header-left">
+                <h1>CookieCheater</h1>
+                <span id="purchaser-phase" class="purchaser-phase"></span>
+            </div>
             <div class="status-bar">
                 <span id="connection-status" class="tag tag-red">Disconnected</span>
-                <span id="uptime"></span>
+                <span id="uptime" class="tag tag-dim"></span>
                 <span id="phase" class="tag"></span>
             </div>
         </header>
 
-        <div class="grid">
-            <!-- Main Stats -->
-            <div class="card stats-card">
-                <h2>Production</h2>
-                <div class="stat-grid">
-                    <div class="stat">
-                        <label>Cookies</label>
-                        <span id="cookies">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>CPS</label>
-                        <span id="cps">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Click CPS</label>
-                        <span id="click-cps">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Prestige</label>
-                        <span id="prestige">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Heavenly Chips</label>
-                        <span id="heavenly-chips">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Sugar Lumps</label>
-                        <span id="lumps">0</span>
-                    </div>
-                </div>
+        <!-- Top row: key metrics -->
+        <div class="top-bar">
+            <div class="metric">
+                <span class="metric-value" id="cookies">0</span>
+                <span class="metric-label">Cookies</span>
             </div>
+            <div class="metric">
+                <span class="metric-value" id="cps">0</span>
+                <span class="metric-label">CPS</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value" id="prestige">0</span>
+                <span class="metric-label">Prestige</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value" id="heavenly-chips">0</span>
+                <span class="metric-label">HC</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value" id="lumps">0</span>
+                <span class="metric-label">Lumps</span>
+            </div>
+            <div class="metric lucky-bank-metric">
+                <div class="lucky-bar-wrap">
+                    <div class="lucky-bar" id="lucky-bar" style="width:0%"></div>
+                    <span class="lucky-text" id="lucky-text">0%</span>
+                </div>
+                <span class="metric-label">Lucky Bank</span>
+            </div>
+            <div class="metric" id="combo-metric" style="display:none">
+                <span class="metric-value combo-flash" id="combo-score">x1</span>
+                <span class="metric-label">COMBO!</span>
+            </div>
+        </div>
 
-            <!-- Bot Stats -->
+        <div class="grid">
+            <!-- Bot Activity + Buffs -->
             <div class="card">
                 <h2>Bot Activity</h2>
                 <div class="stat-grid">
                     <div class="stat">
-                        <label>Total Clicks</label>
+                        <label>Clicks</label>
                         <span id="total-clicks">0</span>
                     </div>
                     <div class="stat">
-                        <label>Golden Cookies</label>
+                        <label>Golden</label>
                         <span id="golden-clicked">0</span>
                     </div>
                     <div class="stat">
-                        <label>Buildings Bought</label>
+                        <label>Buildings</label>
                         <span id="buildings-bought">0</span>
                     </div>
                     <div class="stat">
-                        <label>Upgrades Bought</label>
+                        <label>Upgrades</label>
                         <span id="upgrades-bought">0</span>
                     </div>
                     <div class="stat">
@@ -79,13 +86,34 @@
                         <span id="season">none</span>
                     </div>
                 </div>
+                <div class="buffs-section">
+                    <label class="section-label">Active Buffs</label>
+                    <div id="buffs-list" class="buffs-list">
+                        <span class="dim">None</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- Active Buffs -->
+            <!-- Controls -->
             <div class="card">
-                <h2>Active Buffs</h2>
-                <div id="buffs-list" class="buffs-list">
-                    <span class="dim">None</span>
+                <h2>Controls</h2>
+                <div class="controls">
+                    <button id="btn-startstop" onclick="toggleBot()">Stop Bot</button>
+                    <button onclick="reinjectBot()">Re-inject</button>
+                    <button onclick="saveGame()">Save</button>
+                    <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
+                </div>
+                <div class="module-toggles">
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_click', this.checked)"> Clicker</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_pop_golden', this.checked)"> Golden</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('market_enabled', this.checked)"> Market</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('garden_enabled', this.checked)"> Garden</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('grimoire_enabled', this.checked)"> Grimoire</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pantheon_enabled', this.checked)"> Pantheon</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('dragon_enabled', this.checked)"> Dragon</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_season_cycle', this.checked)"> Seasons</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pop_wrinklers', this.checked)"> Wrinklers</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_harvest_lumps', this.checked)"> Lumps</label>
                 </div>
             </div>
 
@@ -94,35 +122,23 @@
                 <h2>Buildings</h2>
                 <table id="buildings-table">
                     <thead>
-                        <tr>
-                            <th>Building</th>
-                            <th>Count</th>
-                            <th>Total CPS</th>
-                            <th>Next Price</th>
-                        </tr>
+                        <tr><th>Building</th><th>#</th><th>CPS</th><th>Price</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
 
-            <!-- Stock Market (Hidden Data!) -->
+            <!-- Stock Market -->
             <div class="card market-card">
-                <h2>Stock Market (Hidden Data)</h2>
+                <h2>Stock Market <span class="dim">(Hidden Data)</span></h2>
                 <div id="market-info" class="market-info">
-                    <span class="dim">Market not loaded</span>
+                    <span class="dim">Waiting for Banks...</span>
                 </div>
                 <table id="market-table">
                     <thead>
                         <tr>
-                            <th>Good</th>
-                            <th>Price</th>
-                            <th>Rest</th>
-                            <th>Ratio</th>
-                            <th>Mode</th>
-                            <th>Dur</th>
-                            <th>Delta</th>
-                            <th>Stock</th>
-                            <th>Buy/Sell</th>
+                            <th>Sym</th><th>Price</th><th>Rest</th><th>%</th>
+                            <th>Mode</th><th>Ticks</th><th>Delta</th><th>Held</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -139,30 +155,6 @@
             <div class="card log-card">
                 <h2>Action Log</h2>
                 <div id="action-log" class="log"></div>
-            </div>
-
-            <!-- Controls -->
-            <div class="card">
-                <h2>Bot Controls</h2>
-                <div class="controls">
-                    <button id="btn-startstop" onclick="toggleBot()">Stop Bot</button>
-                    <button onclick="reinjectBot()">Re-inject Bot</button>
-                    <button onclick="saveGame()">Save Game</button>
-                    <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
-                </div>
-                <h3 style="margin-top:1rem; font-size:0.85rem; color:var(--dim)">Module Toggles</h3>
-                <div class="controls" style="margin-top:0.5rem">
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_click', this.checked)"> Clicker</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_pop_golden', this.checked)"> Golden Cookies</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('market_enabled', this.checked)"> Market</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('garden_enabled', this.checked)"> Garden</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('grimoire_enabled', this.checked)"> Grimoire</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pantheon_enabled', this.checked)"> Pantheon</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('dragon_enabled', this.checked)"> Dragon</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_season_cycle', this.checked)"> Seasons</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pop_wrinklers', this.checked)"> Wrinklers</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_harvest_lumps', this.checked)"> Sugar Lumps</label>
-                </div>
             </div>
         </div>
     </div>

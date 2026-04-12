@@ -80,6 +80,26 @@ var CookieCheater = window.CookieCheater = {
         return "endgame";
     },
 
+    // Lucky banking: keep enough cookies to maximize Lucky golden cookie payout
+    // Lucky gives: min(900 * CPS, 15% of banked cookies)
+    // To maximize: bank >= 6000 * CPS (so 15% of bank >= 900 * CPS)
+    // During Frenzy (x7): need 6000 * 7 * CPS = 42000 * CPS
+    getLuckyBank: function() {
+        var cps = Game.cookiesPs;
+        // Check if Frenzy is active (need higher bank during Frenzy for Lucky combo)
+        var frenzyMult = 1;
+        for (var name in Game.buffs) {
+            if (Game.buffs[name].multCpS) frenzyMult = Math.max(frenzyMult, Game.buffs[name].multCpS);
+        }
+        return cps * 6000 * frenzyMult;
+    },
+
+    // Check if we should avoid spending cookies (to keep Lucky bank full)
+    shouldSaveCookies: function() {
+        if (CookieCheater.getPhase() === "early") return false; // Don't bank in early game
+        return Game.cookies < CookieCheater.getLuckyBank();
+    },
+
     // Check if any click-multiplier buff is active
     hasClickBuff: function() {
         for (var name in Game.buffs) {
@@ -210,6 +230,11 @@ var CookieCheater = window.CookieCheater = {
             wrinklers: Game.wrinklers ? Game.wrinklers.filter(function(w) { return w.phase === 2; }).length : 0,
             dragonLevel: Game.dragonLevel || 0,
             market: market,
+            luckyBank: CookieCheater.getLuckyBank(),
+            luckyBankPct: CookieCheater.getLuckyBank() > 0 ? Math.min(100, Math.round(Game.cookies / CookieCheater.getLuckyBank() * 100)) : 100,
+            comboActive: CookieCheater._comboActive || false,
+            comboScore: CookieCheater._comboScore || 1,
+            purchaserPhase: CookieCheater.modules.purchaser ? CookieCheater.modules.purchaser.currentPhase : "unknown",
         };
     },
 
