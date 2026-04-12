@@ -160,17 +160,29 @@ CookieCheater.modules.market = {
             if (pos && pos.qty > 0) {
                 var net = this._netProfit(pos.avgPrice, val, brokers);
                 var be = this._breakeven(pos.avgPrice, brokers);
+                var priceVsBe = val / be; // >1 = above breakeven = profitable
+
+                reasons.push("Position: avg $" + pos.avgPrice.toFixed(2) + " BE $" + be.toFixed(2) + " net " + (net * 100).toFixed(1) + "%");
 
                 if (net > 0.80) {
                     score -= 40; reasons.push("MASSIVE GAIN +" + (net * 100).toFixed(0) + "% net — SELL");
-                } else if (ratio > 1.5 && net > 0.50) {
+                } else if (ratio > 1.5 && net > 0.30) {
                     score -= 35; reasons.push("Target hit (" + (ratio * 100).toFixed(0) + "% resting), +" + (net * 100).toFixed(0) + "% net");
-                } else if (mode === 1 && ratio < 1.3 && net > 0) {
-                    score += 10; reasons.push("Riding Slow Rise, +" + (net * 100).toFixed(0) + "% net");
-                } else if ((mode === 2 || mode === 4) && dur > 30 && net > 0.05) {
-                    score -= 20; reasons.push("Exit " + modeNames[mode] + " while profitable, +" + (net * 100).toFixed(0) + "% net");
-                } else if (mode === 4 && dur > 100 && net < -0.30) {
-                    score -= 15; reasons.push("Stop loss in Fast Fall, " + (net * 100).toFixed(0) + "% net");
+                } else if (net > 0 && mode === 1 && ratio < 1.3) {
+                    score += 10; reasons.push("Riding Slow Rise above breakeven");
+                } else if (net > 0 && (mode === 2 || mode === 4) && dur > 30) {
+                    score -= 20; reasons.push("Exit " + modeNames[mode] + " while profitable");
+                } else if (net < 0 && mode === 1 && dur > 100) {
+                    score += 5; reasons.push("Underwater but Slow Rise with " + dur + "t runway — hold for recovery");
+                } else if (net < 0 && (mode === 2 || mode === 4) && dur > 100) {
+                    // Deep underwater in falling mode — consider cutting loss
+                    if (net < -0.30) {
+                        score -= 15; reasons.push("Deep loss " + (net * 100).toFixed(0) + "% in " + modeNames[mode] + " — stop loss");
+                    } else {
+                        score -= 5; reasons.push("Underwater " + (net * 100).toFixed(0) + "% in decline — watching");
+                    }
+                } else if (net < 0 && mode === 0) {
+                    score += 3; reasons.push("Underwater but Stable mode — patient hold");
                 }
             }
         }
@@ -179,9 +191,15 @@ CookieCheater.modules.market = {
         if (stock >= maxStock && score > 0) { score = 0; reasons.push("Position full"); }
 
         // === OVERHEAD DRAG ===
-        if (oh > 0.15 && score > 0 && score < 25) {
-            score = Math.floor(score * 0.5);
-            reasons.push("High overhead (" + (oh * 100).toFixed(1) + "%)");
+        // With high overhead, only extreme bargains are worth buying
+        if (stock === 0 && oh > 0.10 && score > 0) {
+            var hurdlePct = Math.round(this._overheadHurdle(brokers) * 100);
+            if (score < 35) {
+                score = Math.floor(score * 0.4);
+                reasons.push("High overhead " + (oh * 100).toFixed(1) + "% (need +" + hurdlePct + "% to break even) — suppressed");
+            } else {
+                reasons.push("High overhead " + (oh * 100).toFixed(1) + "% but strong signal");
+            }
         }
 
         // === COOKIE BUDGET ===
@@ -194,9 +212,14 @@ CookieCheater.modules.market = {
         }
 
         // === DECISION ===
-        // Value investor thresholds (Cookie Monster style — patient)
+        // Value investor thresholds — scale with overhead
+        // With 13% overhead you need ~30% price rise to break even
+        // Only buy when the signal is MUCH stronger than the overhead hurdle
+        var hurdle = this._overheadHurdle(Game.ObjectsById[5].minigame ? (Game.ObjectsById[5].minigame.brokers || 0) : 0);
+        var buyThreshold = oh > 0.10 ? 35 : oh > 0.05 ? 30 : 25; // Stricter with high overhead
+
         if (stock > 0 && score < -15) action = "sell";
-        else if (stock === 0 && score > 25) action = "buy";
+        else if (stock === 0 && score > buyThreshold) action = "buy";
 
         // Signal for dashboard
         var signal, strength;
