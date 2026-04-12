@@ -15,11 +15,17 @@ CookieCheater.modules.purchaser = {
         var cps = Game.cookiesPs;
 
         // === EARLY GAME BOOTSTRAP ===
-        // When CPS is 0 or very low, just buy the cheapest thing available
         if (cps < 1) {
             this._earlyGameBuy(cookies);
             return;
         }
+
+        // === POST-COMBO UPGRADE RUSH ===
+        // After a combo dumps huge cookies, buy ALL affordable upgrades first.
+        // Upgrades are multiplicative — they amplify everything permanently.
+        // Buildings are additive and have diminishing returns.
+        // This is the single biggest optimization: spend combo winnings on upgrades.
+        if (this._comboUpgradeRush(cookies, cps)) return;
 
         // === LUCKY BANKING (soft reserve) ===
         // Lucky gives min(900*CPS, 15% of bank). To max: bank >= 6000*CPS
@@ -133,6 +139,64 @@ CookieCheater.modules.purchaser = {
         if (this._buyAffordableCheapUpgrades(cookies, cps)) return;
 
         this.currentPhase = "waiting";
+    },
+
+    // Post-combo upgrade rush: buy ALL affordable upgrades before any buildings.
+    // During/after a combo, cookies spike massively. Upgrades are multiplicative
+    // (kittens, flavored cookies, tiered doublings) — buying them NOW amplifies
+    // all future income permanently. Buildings are just additive.
+    //
+    // Detection: combo active OR combo ended within last 30 seconds
+    // Priority order: goldenCookie > kitten > tiered > special > flavored > all others
+    _comboUpgradeRush: function(cookies, cps) {
+        // Check if we're in a combo or just exited one
+        var inCombo = CookieCheater._comboActive;
+        var comboLog = CookieCheater.modules.pantheon ? CookieCheater.modules.pantheon._comboLog : [];
+        var lastCombo = comboLog.length > 0 ? comboLog[comboLog.length - 1] : null;
+        var justEndedCombo = lastCombo && lastCombo.endTime && (Date.now() - lastCombo.endTime < 30000);
+
+        if (!inCombo && !justEndedCombo) return false;
+
+        // Sort all affordable upgrades by KB priority (highest first)
+        var KB = CookieCheater.KB;
+        var affordable = [];
+        for (var i = 0; i < Game.UpgradesInStore.length; i++) {
+            var u = Game.UpgradesInStore[i];
+            if (u.bought || !u.canBuy()) continue;
+
+            var analysis = KB ? KB.analyzeUpgrade(u, cps) : null;
+            if (analysis && analysis.skip) continue; // Don't buy Elder Pledge etc
+
+            affordable.push({
+                ref: u,
+                name: u.name,
+                price: u.basePrice,
+                priority: analysis ? analysis.priority : 0.5,
+                category: analysis ? analysis.category : "unknown",
+                value: analysis ? analysis.value : 0,
+            });
+        }
+
+        if (affordable.length === 0) return false;
+
+        // Sort by priority descending (kittens first, then golden cookie, then tiered...)
+        affordable.sort(function(a, b) { return b.priority - a.priority; });
+
+        // Buy the highest priority affordable upgrade
+        var best = affordable[0];
+        best.ref.buy();
+        CookieCheater.stats.upgradesBought++;
+
+        var comboTag = inCombo ? "COMBO" : "POST-COMBO";
+        CookieCheater.justify("purchaser", "UPGRADE_RUSH",
+            "[" + comboTag + "] " + best.name + " [" + best.category + "] $" + this._fmt(best.price) +
+            " — priority " + best.priority +
+            " (" + affordable.length + " upgrades still affordable)" +
+            (inCombo ? " — buying during active combo for maximum impact!" : " — spending combo winnings on permanent multipliers"));
+
+        this._lastPurchaseTime = Date.now();
+        this.currentPhase = comboTag + ": " + best.name;
+        return true;
     },
 
     // Early game: just buy anything affordable, cheapest first
