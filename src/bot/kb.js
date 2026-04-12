@@ -32,9 +32,15 @@ CookieCheater.KB = {
             },
             value: function(u, cps) {
                 var building = u.buildingTie1 || u.buildingTie;
-                return building ? building.storedTotalCps : 0;
+                if (!building) return 0;
+                var directCps = building.storedTotalCps;
+                // Floor: doubling ANY building is worth at least 1% of total CPS
+                // because the game recalculates synergies, grandma bonuses, etc.
+                // storedTotalCps only shows direct output, not indirect multiplier effects
+                var floorVal = cps * 0.01;
+                return Math.max(directCps, floorVal);
             },
-            priority: 1.5, // High priority - direct CPS doubling
+            priority: 1.5,
             notes: "Doubles one building type's output. Always good ROI."
         },
 
@@ -43,22 +49,22 @@ CookieCheater.KB = {
         // Dual effect: doubles grandma CPS + adds scaling bonus to a building
         grandmaType: {
             detect: function(u) {
-                return u.buildingTie1 && u.desc &&
+                return u.desc &&
                        u.desc.indexOf("Grandma") !== -1 &&
-                       u.desc.indexOf("+1%") !== -1;
+                       u.desc.indexOf("+1%") !== -1 &&
+                       u.desc.indexOf("grandma") !== -1;
             },
             value: function(u, cps) {
                 // Doubles grandma CPS + adds grandma-scaling to another building
                 var grandmaCps = Game.ObjectsById[1].storedTotalCps;
                 var tiedBuilding = u.buildingTie1 || u.buildingTie;
                 var tiedCps = tiedBuilding ? tiedBuilding.storedTotalCps : 0;
-                // The +1% per N grandmas bonus on the tied building
                 var grandmaCount = Game.ObjectsById[1].amount;
-                // Extract the divisor from desc ("+1% CpS per N grandmas")
                 var match = u.desc.match(/per (\d+) grandma/);
                 var divisor = match ? parseInt(match[1]) : 1;
                 var bonus = tiedCps * (grandmaCount / divisor) * 0.01;
-                return grandmaCps + bonus;
+                // Floor: at least 1% of CPS (indirect effects from grandma synergies)
+                return Math.max(grandmaCps + bonus, cps * 0.01);
             },
             priority: 1.4,
             notes: "Doubles grandma output + scales building with grandma count."
@@ -264,6 +270,45 @@ CookieCheater.KB = {
             notes: "News ticker fortunes. Strong scaling, always buy."
         },
 
+        // ---- SPECIAL / UNIQUE UPGRADES ----
+        // One-off upgrades that don't fit other categories but are very valuable
+        special: {
+            detect: function(u) {
+                var specials = [
+                    "Bingo center/Research facility",  // 4x grandma + unlocks research chain
+                    "Specialized chocolate chips", "Designer cocoa beans",
+                    "Ritual rolling pins", "Underworld ovens", "Exotic nuts", "Arcane sugar",
+                    "A festive hat", "Reindeer baking grounds",        // Santa/Christmas
+                    "Ho ho ho-flavored frosting", "Season savings",
+                    "Toy workshop", "Naughty list", "Santa's helpers",
+                    "Santa's legacy", "Santa's bottomless bag",
+                    "Santa's milk and cookies", "Santa's dominion",
+                    "How to bake your dragon",                         // Dragon
+                    "A crumbly egg",
+                    "Golden goose egg", "Faberge egg",                 // Easter special
+                    "Omelette", "Chocolate egg", "Century egg",
+                    "Cookie egg",
+                ];
+                return specials.indexOf(u.name) !== -1;
+            },
+            value: function(u, cps) {
+                // These are game-changing upgrades. Estimate high value.
+                var name = u.name;
+                if (name === "Bingo center/Research facility") return cps * 0.5; // 4x grandma + research chain
+                if (name === "How to bake your dragon") return cps * 0.3;
+                if (name === "Chocolate egg") return cps * 0.05; // 5% of bank on buy
+                // Santa upgrades: each gives ~1-3% CPS boost
+                if (name.indexOf("Santa") !== -1) return cps * 0.02;
+                // Research chain upgrades
+                if (name === "Exotic nuts") return cps * 0.04;
+                if (name === "Arcane sugar") return cps * 0.05;
+                // Default special: treat as 2% CPS
+                return cps * 0.02;
+            },
+            priority: 1.8,
+            notes: "Unique game-changing upgrade. Buy when affordable."
+        },
+
         // ---- ELDER PLEDGE / COVENANT ----
         // Special: managed by grandmapocalypse.js module
         elderControl: {
@@ -344,14 +389,37 @@ CookieCheater.KB = {
             }
         }
 
-        // Unknown upgrade - fallback: buy if cheap
+        // Unknown upgrade - try harder to estimate value
+        var unknownValue = cps * 0.01;
+        var unknownPriority = 0.5;
+        var desc = upgrade.desc || "";
+
+        // Check for multiplier patterns we might have missed
+        if (desc.indexOf("times as efficient") !== -1 || desc.indexOf("twice") !== -1) {
+            // Some kind of building multiplier we didn't catch
+            var tie = upgrade.buildingTie1 || upgrade.buildingTie;
+            if (tie) {
+                unknownValue = Math.max(tie.storedTotalCps, cps * 0.01);
+                unknownPriority = 1.2;
+            }
+        }
+        if (desc.indexOf("Cookie production multiplier") !== -1) {
+            var pctM = desc.match(/\+(\d+)%/);
+            unknownValue = cps * (pctM ? parseInt(pctM[1]) / 100 : 0.02);
+            unknownPriority = 1.0;
+        }
+        if (desc.indexOf("golden cookie") !== -1 || desc.indexOf("Golden cookie") !== -1) {
+            unknownValue = cps * 0.1;
+            unknownPriority = 1.5;
+        }
+
         return {
             category: "unknown",
-            value: cps * 0.01,
-            priority: 0.5,
-            payback: upgrade.basePrice / Math.max(cps * 0.01, 0.001),
+            value: unknownValue,
+            priority: unknownPriority,
+            payback: upgrade.basePrice / Math.max(unknownValue, 0.001),
             skip: false,
-            notes: "Unknown upgrade type. Buy if cheap."
+            notes: "Unrecognized upgrade. Estimated from description."
         };
     },
 

@@ -248,9 +248,11 @@ CookieCheater.modules.market = {
 
         M.buyGood(g.id, qty);
 
+        // Track position using RAW price (not including overhead)
+        // Overhead will be calculated in _netProfit using broker count
         if (!this._positions[g.id]) this._positions[g.id] = { qty: 0, totalCost: 0, avgPrice: 0, entryMode: analysis.mode };
         this._positions[g.id].qty += qty;
-        this._positions[g.id].totalCost += cost;
+        this._positions[g.id].totalCost += analysis.val * qty; // RAW price, no overhead
         this._positions[g.id].avgPrice = this._positions[g.id].totalCost / this._positions[g.id].qty;
 
         this._stats.totalTrades++;
@@ -270,29 +272,28 @@ CookieCheater.modules.market = {
         var stock = analysis.stock;
         if (stock <= 0) return;
 
-        // Never sell at a loss unless score is very negative (stop loss)
+        // Check if this sell would be profitable (using broker count for proper overhead calc)
+        var brokers = M.brokers || 0;
         var pos = this._positions[g.id];
         if (pos && pos.qty > 0) {
-            var net = this._netProfit(pos.avgPrice, analysis.val, oh / (1 + oh));
-            if (net < 0 && analysis.score > -25) return;
+            var net = this._netProfit(pos.avgPrice, analysis.val, brokers);
+            if (net < 0 && analysis.score > -25) return; // Don't sell at a loss unless stop-loss
         }
 
         M.sellGood(g.id, stock);
 
+        // Calculate P/L
+        var tradeNet = 0, tradePnl = 0;
         var pnlStr = "";
         if (pos && pos.qty > 0) {
-            var net = this._netProfit(pos.avgPrice, analysis.val, M.brokers || 0);
-            var pnl = analysis.val * stock * (1 - oh) - pos.totalCost;
-            pnlStr = " | P/L " + (pnl > 0 ? "+" : "") + pnl.toFixed(0) + " (" + (net > 0 ? "+" : "") + (net * 100).toFixed(1) + "% net)";
-            this._stats.totalPnL += pnl;
-            if (pnl > 0) this._stats.wins++; else this._stats.losses++;
-        }
-
-        // Record structured trade BEFORE deleting position
-        var tradeNet = 0, tradePnl = 0;
-        if (pos && pos.qty > 0) {
-            tradeNet = this._netProfit(pos.avgPrice, analysis.val, M.brokers || 0);
-            tradePnl = analysis.val * stock * (1 - oh) - pos.totalCost;
+            tradeNet = this._netProfit(pos.avgPrice, analysis.val, brokers);
+            // Actual P/L: what we receive minus what we paid (both with overhead)
+            var received = analysis.val * stock * (1 - oh);
+            var paid = pos.avgPrice * stock * (1 + oh); // avgPrice is RAW, add buy overhead
+            tradePnl = received - paid;
+            pnlStr = " | P/L " + (tradePnl > 0 ? "+" : "") + tradePnl.toFixed(0) + " (" + (tradeNet > 0 ? "+" : "") + (tradeNet * 100).toFixed(1) + "% net)";
+            this._stats.totalPnL += tradePnl;
+            if (tradePnl > 0) this._stats.wins++; else this._stats.losses++;
         }
         this._stats.totalTrades++;
         this._recordTrade("sell", g, stock, analysis.val, analysis, oh, tradeNet, tradePnl);
@@ -329,11 +330,13 @@ CookieCheater.modules.market = {
         return base;
     },
 
-    _netProfit: function(buyAvg, sellPrice, brokers) {
+    _netProfit: function(buyAvgRaw, sellPriceRaw, brokers) {
         // Net profit % after overhead on BOTH buy and sell sides
-        var oh = typeof brokers === 'number' && brokers > 1 ? 0.2 * Math.pow(0.95, brokers) : brokers; // Accept oh directly or broker count
-        var actualBuy = buyAvg * (1 + oh);
-        var actualSell = sellPrice * (1 - oh);
+        // buyAvgRaw and sellPriceRaw are RAW prices (without overhead)
+        // brokers is the broker COUNT (used to calculate overhead)
+        var oh = 0.2 * Math.pow(0.95, brokers);
+        var actualBuy = buyAvgRaw * (1 + oh);   // What we paid per share
+        var actualSell = sellPriceRaw * (1 - oh); // What we receive per share
         return actualBuy > 0 ? (actualSell - actualBuy) / actualBuy : 0;
     },
 
@@ -356,9 +359,10 @@ CookieCheater.modules.market = {
         for (var i = 0; i < M.goodsById.length; i++) {
             var g = M.goodsById[i];
             if (g.stock > 0 && !this._positions[g.id]) {
-                var estimated = g.val * g.stock * 1.1;
-                this._positions[g.id] = { qty: g.stock, totalCost: estimated, avgPrice: g.val * 1.1, entryMode: g.mode };
-                CookieCheater.log("market", "rebuild", g.symbol + " x" + g.stock + " (est avg $" + (g.val * 1.1).toFixed(2) + ")");
+                // Estimate avg buy price slightly above current (conservative)
+                var estAvg = g.val * 1.05; // Assume we bought 5% higher than current
+                this._positions[g.id] = { qty: g.stock, totalCost: estAvg * g.stock, avgPrice: estAvg, entryMode: g.mode };
+                CookieCheater.log("market", "rebuild", g.symbol + " x" + g.stock + " (est raw avg $" + estAvg.toFixed(2) + ")");
             }
         }
     },
