@@ -62,7 +62,10 @@ CookieCheater.modules.purchaser = {
         }
 
         if (saveTarget) {
-            this.currentPhase = "saving for " + saveTarget.name + " (" + Math.ceil((saveTarget.price - cookies) / cps) + "s)";
+            var eta = Math.ceil((saveTarget.price - cookies) / cps);
+            this.currentPhase = "saving for " + saveTarget.name + " (" + eta + "s)";
+            CookieCheater.justify("purchaser", "SAVING",
+                "Waiting " + eta + "s for " + saveTarget.name + " ($" + this._fmt(saveTarget.price) + ") — 30%+ better ROI than buying now");
             return;
         }
 
@@ -72,7 +75,11 @@ CookieCheater.modules.purchaser = {
             if (bestUpgrade.payback <= buildingPayback) {
                 bestUpgrade.ref.buy();
                 CookieCheater.stats.upgradesBought++;
-                CookieCheater.log("purchaser", "buy_upgrade", bestUpgrade.name + " [" + (bestUpgrade.category || "?") + "] ($" + this._fmt(bestUpgrade.price) + ")");
+                var cat = bestUpgrade.category || "?";
+                var reason = bestUpgrade.name + " [" + cat + "] $" + this._fmt(bestUpgrade.price) +
+                    " — payback " + Math.round(bestUpgrade.payback * (bestUpgrade.priority || 1)) + "s" +
+                    (bestUpgrade.priority > 1.5 ? " (priority x" + bestUpgrade.priority + "!)" : "");
+                CookieCheater.justify("purchaser", "BUY_UPGRADE", reason);
                 this._lastPurchaseTime = Date.now();
                 this.currentPhase = "bought upgrade: " + bestUpgrade.name;
                 return;
@@ -83,9 +90,15 @@ CookieCheater.modules.purchaser = {
         if (bestAffordableBuilding) {
             bestAffordableBuilding.ref.buy();
             CookieCheater.stats.buildingsBought++;
-            CookieCheater.log("purchaser", "buy_building", bestAffordableBuilding.name + " #" + bestAffordableBuilding.ref.amount + " ($" + this._fmt(bestAffordableBuilding.price) + ")");
+            var bName = bestAffordableBuilding.name;
+            var bAmt = bestAffordableBuilding.ref.amount;
+            var bPb = Math.round(bestAffordableBuilding.payback);
+            CookieCheater.justify("purchaser", "BUY_BUILDING",
+                bName + " #" + bAmt + " $" + this._fmt(bestAffordableBuilding.price) +
+                " — best ROI (payback " + bPb + "s), beats " +
+                (bestUpgrade ? bestUpgrade.name + " (" + Math.round(bestUpgrade.payback) + "s)" : "no upgrades"));
             this._lastPurchaseTime = Date.now();
-            this.currentPhase = "bought: " + bestAffordableBuilding.name;
+            this.currentPhase = "bought: " + bName;
             return;
         }
 

@@ -172,8 +172,76 @@ function updateDashboard(data) {
         }).join('');
     }
 
+    // Strategy panel
+    if (data.strategy) updateStrategy(data.strategy);
+
     // CPS chart
     updateChart(data.cps);
+}
+
+function updateStrategy(S) {
+    // Priorities
+    const priEl = document.getElementById('strategy-priorities');
+    if (S.priorities && S.priorities.length > 0) {
+        priEl.innerHTML = S.priorities.slice(0, 5).map(p => {
+            const barColor = { critical: '#f87171', high: '#fbbf24', medium: '#60a5fa', low: '#6b6b8a' }[p.urgency] || '#6b6b8a';
+            const barHtml = p.progress >= 0
+                ? `<div class="priority-bar"><div class="priority-bar-fill" style="width:${p.progress}%;background:${barColor}"></div></div>`
+                : '';
+            return `<div class="priority-item ${p.urgency}">
+                <span class="priority-urgency ${p.urgency}">${p.urgency}</span>
+                <span class="priority-label">${p.label}</span>
+                ${barHtml}
+                <span class="priority-reason">${p.reason}</span>
+            </div>`;
+        }).join('');
+    } else {
+        priEl.innerHTML = '<span class="dim">No active priorities</span>';
+    }
+
+    // Short term goals
+    const shortEl = document.getElementById('strategy-short');
+    if (S.shortTermGoals && S.shortTermGoals.length > 0) {
+        shortEl.innerHTML = S.shortTermGoals.map(g =>
+            `<div class="goal-item">
+                <span class="goal-action">${g.action}</span> ${g.target || ''}
+                <span class="goal-reason">${g.reason}</span>
+            </div>`
+        ).join('');
+    } else {
+        shortEl.innerHTML = '<span class="dim">Monitoring...</span>';
+    }
+
+    // Long term goals
+    const longEl = document.getElementById('strategy-long');
+    if (S.longTermGoals && S.longTermGoals.length > 0) {
+        longEl.innerHTML = S.longTermGoals.map(g => {
+            const bar = g.progress >= 0
+                ? `<div class="priority-bar" style="width:100%;margin-top:2px"><div class="priority-bar-fill" style="width:${g.progress}%;background:#a78bfa"></div></div>`
+                : '';
+            return `<div class="goal-item">
+                ${g.label} ${bar}
+                <span class="goal-reason">${g.reason}</span>
+            </div>`;
+        }).join('');
+    } else {
+        longEl.innerHTML = '<span class="dim">-</span>';
+    }
+
+    // Income breakdown
+    const incEl = document.getElementById('strategy-income');
+    if (S.incomeBreakdown && S.incomeBreakdown.top && S.incomeBreakdown.top.length > 0) {
+        const maxPct = S.incomeBreakdown.top[0].pct;
+        incEl.innerHTML = S.incomeBreakdown.top.map(b =>
+            `<div class="income-row">
+                <span class="income-name">${b.name}</span>
+                <div class="income-bar-wrap"><div class="income-bar-fill" style="width:${b.pct / maxPct * 100}%"></div></div>
+                <span class="income-pct">${b.pct}%</span>
+            </div>`
+        ).join('');
+    } else {
+        incEl.innerHTML = '<span class="dim">No income yet</span>';
+    }
 }
 
 function updateChart(cps) {

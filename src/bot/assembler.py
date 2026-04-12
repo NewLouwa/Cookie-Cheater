@@ -5,6 +5,7 @@ import json
 
 # Order matters: engine.js first, then modules in dependency order
 MODULE_ORDER = [
+    "strategist.js",
     "clicker.js",
     "purchaser.js",
     "shimmer.js",
