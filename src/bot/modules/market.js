@@ -19,6 +19,27 @@ CookieCheater.modules.market = {
     _initialized: false,
     _signals: {},       // { goodId: { signal, strength, score, reasons } } for dashboard
     _stats: { totalTrades: 0, wins: 0, losses: 0, totalPnL: 0 },
+    _tradeLog: [],      // Structured trades for DB persistence
+    _tradeLogMax: 200,
+
+    _recordTrade: function(action, g, qty, price, analysis, oh, netPct, pnl) {
+        this._tradeLog.push({
+            time: Date.now(),
+            action: action,
+            good_id: g.id,
+            symbol: g.symbol || g.name,
+            quantity: qty,
+            price: price,
+            mode: analysis.mode,
+            dur: analysis.dur,
+            ratio: Math.round(analysis.ratio * 100) / 100,
+            score: analysis.score,
+            net_pct: Math.round((netPct || 0) * 1000) / 1000,
+            pnl: Math.round((pnl || 0) * 100) / 100,
+            reason: (analysis.reasons && analysis.reasons[0]) || "",
+        });
+        if (this._tradeLog.length > this._tradeLogMax) this._tradeLog.shift();
+    },
 
     tick: function() {
         if (!CookieCheater.config.market_enabled) return;
@@ -233,6 +254,8 @@ CookieCheater.modules.market = {
         this._positions[g.id].avgPrice = this._positions[g.id].totalCost / this._positions[g.id].qty;
 
         this._stats.totalTrades++;
+        this._recordTrade("buy", g, qty, analysis.val, analysis, oh, 0, 0);
+
         var modeNames = ["Stable", "SlowRise", "SlowFall", "FastRise", "FastFall", "Chaotic"];
         CookieCheater.justify("market", "BUY",
             g.symbol + " x" + qty + " @ $" + analysis.val.toFixed(2) +
@@ -265,9 +288,17 @@ CookieCheater.modules.market = {
             if (pnl > 0) this._stats.wins++; else this._stats.losses++;
         }
 
+        // Record structured trade BEFORE deleting position
+        var tradeNet = 0, tradePnl = 0;
+        if (pos && pos.qty > 0) {
+            tradeNet = this._netProfit(pos.avgPrice, analysis.val, M.brokers || 0);
+            tradePnl = analysis.val * stock * (1 - oh) - pos.totalCost;
+        }
+        this._stats.totalTrades++;
+        this._recordTrade("sell", g, stock, analysis.val, analysis, oh, tradeNet, tradePnl);
+
         if (this._positions[g.id]) delete this._positions[g.id];
 
-        this._stats.totalTrades++;
         var modeNames = ["Stable", "SlowRise", "SlowFall", "FastRise", "FastFall", "Chaotic"];
         CookieCheater.justify("market", "SELL",
             g.symbol + " x" + stock + " @ $" + analysis.val.toFixed(2) +
@@ -475,6 +506,7 @@ CookieCheater.modules.market = {
             profit: Math.round((M.profit || 0) * 100) / 100,
             officeLevel: M.officeLevel || 0,
             stats: this._stats,
+            tradeLog: this._tradeLog,
             loans: this._analyzeLoan(M),
         };
     },

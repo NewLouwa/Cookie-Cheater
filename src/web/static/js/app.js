@@ -640,7 +640,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-// Trade history refresh
+// Trade history refresh from DB
 async function refreshTradeHistory() {
     try {
         const res = await fetch('/api/market/trades?limit=50');
@@ -649,20 +649,34 @@ async function refreshTradeHistory() {
         if (!el) return;
 
         if (Array.isArray(trades) && trades.length > 0) {
-            el.innerHTML = trades.slice(-30).reverse().map(t => {
-                const isBuy = t.action === 'buy';
-                const actionCls = isBuy ? 'mode-rise' : 'mode-fall';
-                const pnlStr = t.pnl ? ` P/L: <span class="${t.pnl >= 0 ? 'net-positive' : 'net-negative'}">${t.pnl >= 0 ? '+' : ''}${formatNumber(t.pnl)}</span>` : '';
-                const netStr = t.net_pct ? ` (${t.net_pct >= 0 ? '+' : ''}${(t.net_pct * 100).toFixed(1)}%)` : '';
-                return `<div class="entry">
-                    <span class="time">${t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : ''}</span>
-                    <span class="${actionCls}" style="font-weight:700">${(t.action || '').toUpperCase()}</span>
-                    <span class="good-icon good-icon-${t.good_id}"></span>
-                    <strong>${t.symbol}</strong> x${t.quantity} @ $${(t.price || 0).toFixed(2)}
-                    ${pnlStr}${netStr}
-                    <span class="dim">${t.reason || ''}</span>
-                </div>`;
-            }).join('');
+            const modeNames = ['Stable', 'SlowRise', 'SlowFall', 'FastRise', 'FastFall', 'Chaotic'];
+            el.innerHTML = '<table class="mini-table" style="width:100%"><thead><tr>' +
+                '<th>Time</th><th>Action</th><th>Good</th><th>Qty</th><th>Price</th>' +
+                '<th>Mode</th><th>Ratio</th><th>Score</th><th>Net%</th><th>P/L</th><th>Reason</th>' +
+                '</tr></thead><tbody>' +
+                trades.reverse().map(t => {
+                    const isBuy = t.action === 'buy';
+                    const actionBadge = `<span class="signal-badge ${isBuy ? 'buy-strong' : 'sell-strong'}">${(t.action || '?').toUpperCase()}</span>`;
+                    const mode = modeNames[t.mode] || '?';
+                    const modeClass = t.mode === 1 || t.mode === 3 ? 'mode-rise' : t.mode === 2 || t.mode === 4 ? 'mode-fall' : t.mode === 5 ? 'mode-chaotic' : '';
+                    const netPct = t.net_pct ? `<span class="${t.net_pct >= 0 ? 'net-positive' : 'net-negative'}">${t.net_pct >= 0 ? '+' : ''}${(t.net_pct * 100).toFixed(1)}%</span>` : '-';
+                    const pnl = t.pnl ? `<span class="${t.pnl >= 0 ? 'net-positive' : 'net-negative'}">${t.pnl >= 0 ? '+' : ''}${formatNumber(t.pnl)}</span>` : '-';
+                    const time = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '';
+                    return `<tr>
+                        <td class="dim">${time}</td>
+                        <td>${actionBadge}</td>
+                        <td><span class="good-icon good-icon-${t.good_id}"></span>${t.symbol}</td>
+                        <td>${t.quantity || 0}</td>
+                        <td>$${(t.price || 0).toFixed(2)}</td>
+                        <td class="${modeClass}">${mode}</td>
+                        <td>${t.ratio ? (t.ratio * 100).toFixed(0) + '%' : '-'}</td>
+                        <td>${t.score || 0}</td>
+                        <td>${netPct}</td>
+                        <td>${pnl}</td>
+                        <td class="market-reason">${t.reason || ''}</td>
+                    </tr>`;
+                }).join('') +
+                '</tbody></table>';
         }
     } catch (e) {}
 }

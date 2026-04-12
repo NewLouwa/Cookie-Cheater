@@ -57,27 +57,14 @@ class GameService:
                             # Save market P/L snapshot
                             if market.get("stats"):
                                 save_market_pnl(self.db_path, market["stats"])
-                        # Extract and save market trades from action log
+                        # Extract structured market trades from JS trade log
                         try:
-                            actions = await loop.run_in_executor(
-                                self._executor, lambda: self.bridge.get_action_log(50)
-                            )
-                            if actions and len(actions) > self._last_action_count:
-                                new_actions = actions[self._last_action_count:]
-                                self._last_action_count = len(actions)
-                                for a in new_actions:
-                                    if a.get("module") == "market" and a.get("action") in ("BUY", "SELL"):
-                                        # Parse trade info from the detail string
-                                        detail = a.get("detail", "")
-                                        trade = {
-                                            "good_id": 0, "symbol": detail.split(" ")[0] if detail else "",
-                                            "action": a["action"].lower(),
-                                            "quantity": 0, "price": 0,
-                                            "mode": 0, "dur": 0, "ratio": 0,
-                                            "net_pct": 0, "pnl": 0,
-                                            "reason": detail
-                                        }
-                                        save_market_trade(self.db_path, trade)
+                            trade_log = market.get("tradeLog") if market else None
+                            if trade_log and len(trade_log) > self._last_action_count:
+                                new_trades = trade_log[self._last_action_count:]
+                                self._last_action_count = len(trade_log)
+                                for t in new_trades:
+                                    save_market_trade(self.db_path, t)
                         except Exception:
                             pass
 

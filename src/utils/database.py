@@ -83,6 +83,7 @@ def setup_tables(db_path="cheater.db"):
             mode INTEGER,
             dur INTEGER,
             ratio REAL,
+            score INTEGER,
             net_pct REAL,
             pnl REAL,
             reason TEXT
@@ -169,13 +170,14 @@ def save_market_trade(db_path, trade):
     conn = get_connection(db_path)
     conn.execute(
         """INSERT INTO market_trades
-           (good_id, symbol, action, quantity, price, mode, dur, ratio, net_pct, pnl, reason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (good_id, symbol, action, quantity, price, mode, dur, ratio, score, net_pct, pnl, reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             trade.get("good_id", 0), trade.get("symbol", ""),
             trade.get("action", ""), trade.get("quantity", 0),
             trade.get("price", 0), trade.get("mode", 0),
             trade.get("dur", 0), trade.get("ratio", 0),
+            trade.get("score", 0),
             trade.get("net_pct", 0), trade.get("pnl", 0),
             trade.get("reason", ""),
         )
