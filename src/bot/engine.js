@@ -241,6 +241,7 @@ var CookieCheater = window.CookieCheater = {
             gardenPhase: CookieCheater.modules.garden ? CookieCheater.modules.garden._phase : null,
             gardenInfo: CookieCheater._gardenInfo || null,
             pantheonInfo: CookieCheater._pantheonInfo || null,
+            grandmaInfo: CookieCheater._grandmaInfo || null,
         };
     },
 

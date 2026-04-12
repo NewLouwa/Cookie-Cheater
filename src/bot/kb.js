@@ -201,15 +201,12 @@ CookieCheater.KB = {
 
         // ---- RESEARCH UPGRADES (Bingo Center) ----
         // Sequential chain, auto-unlocks. Includes Grandmapocalypse triggers.
-        // 1. Specialized chocolate chips (+1% CPS)
-        // 2. Designer cocoa beans (+2% CPS)
-        // 3. Ritual rolling pins (Grandma 2x)
-        // 4. Underworld ovens (+3% CPS)
-        // 5. One Mind (Grandma 2x + starts Grandmapocalypse stage 1)
-        // 6. Exotic nuts (+4% CPS)
-        // 7. Communal brainsweep (Grandma 2x + Grandmapocalypse stage 2)
-        // 8. Arcane sugar (+5% CPS)
-        // 9. Elder Pact (Grandma 2x + Grandmapocalypse stage 3)
+        // SAFE: Specialized chocolate chips, Designer cocoa beans, Ritual rolling pins,
+        //       Underworld ovens, Exotic nuts, Arcane sugar
+        // DANGEROUS (triggers Grandmapocalypse stages):
+        //   One Mind → Stage 1: some golden → wrath cookies
+        //   Communal Brainsweep → Stage 2: more wrath cookies
+        //   Elder Pact → Stage 3: ALL golden → wrath, wrinklers spawn
         research: {
             detect: function(u) {
                 var names = [
@@ -220,17 +217,25 @@ CookieCheater.KB = {
                 return names.indexOf(u.name) !== -1;
             },
             value: function(u, cps) {
-                // CPS multiplier research = straightforward
+                // SKIP Grandmapocalypse triggers unless strategy is "full"
+                var dangerousNames = ["One mind", "Communal brainsweep", "Elder Pact"];
+                if (dangerousNames.indexOf(u.name) !== -1) {
+                    var strategy = CookieCheater.config.grandmapocalypse_strategy;
+                    if (strategy !== "full") {
+                        return 0; // Don't buy — would start wrath cookies
+                    }
+                }
+                // CPS multiplier research
                 var match = u.desc && u.desc.match(/\+(\d+)%/);
                 if (match) return cps * parseInt(match[1]) / 100;
                 // Grandma doubling
                 if (u.desc && u.desc.indexOf("twice") !== -1) {
-                    return Game.ObjectsById[1].storedTotalCps;
+                    return Math.max(Game.ObjectsById[1].storedTotalCps, cps * 0.03);
                 }
                 return cps * 0.02;
             },
             priority: 1.2,
-            notes: "Research chain. Always buy (Grandmapocalypse managed by its own module)."
+            notes: "Research chain. Safe upgrades always bought. Grandmapocalypse triggers skipped unless strategy='full'."
         },
 
         // ---- SEASONAL UPGRADES ----
