@@ -21,7 +21,7 @@
             </div>
         </header>
 
-        <!-- Top row: key metrics -->
+        <!-- Top metrics bar (always visible) -->
         <div class="top-bar">
             <div class="metric">
                 <span class="metric-value" id="cookies">0</span>
@@ -56,169 +56,183 @@
             </div>
         </div>
 
-        <div class="grid">
-            <!-- Strategy Panel -->
-            <div class="card strategy-card">
-                <h2>Strategy</h2>
-                <div id="strategy-priorities" class="strategy-section">
-                    <span class="dim">Analyzing...</span>
-                </div>
-                <div class="strategy-goals-row">
-                    <div class="strategy-col">
-                        <label class="section-label">Short Term</label>
-                        <div id="strategy-short" class="strategy-list">
-                            <span class="dim">-</span>
+        <!-- Tab navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="market">Market</button>
+            <button class="tab-btn" data-tab="garden">Garden</button>
+            <button class="tab-btn" data-tab="buildings">Buildings</button>
+            <button class="tab-btn" data-tab="log">Log</button>
+            <button class="tab-btn" data-tab="settings">Settings</button>
+        </nav>
+
+        <!-- Sugar Lump Approval (floating, always visible when active) -->
+        <div class="card lump-card" id="lump-card" style="display:none">
+            <h2>Sugar Lumps</h2>
+            <div id="lump-header" class="lump-header"></div>
+            <div id="lump-options" class="lump-options"></div>
+            <button class="btn-skip" onclick="skipLumps()">Skip - save lumps</button>
+        </div>
+
+        <!-- ==================== TAB: OVERVIEW ==================== -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="grid">
+                <!-- Strategy Panel -->
+                <div class="card strategy-card">
+                    <h2>Strategy</h2>
+                    <div id="strategy-priorities" class="strategy-section">
+                        <span class="dim">Analyzing...</span>
+                    </div>
+                    <div class="strategy-goals-row">
+                        <div class="strategy-col">
+                            <label class="section-label">Short Term</label>
+                            <div id="strategy-short" class="strategy-list">
+                                <span class="dim">-</span>
+                            </div>
+                        </div>
+                        <div class="strategy-col">
+                            <label class="section-label">Long Term</label>
+                            <div id="strategy-long" class="strategy-list">
+                                <span class="dim">-</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="strategy-col">
-                        <label class="section-label">Long Term</label>
-                        <div id="strategy-long" class="strategy-list">
-                            <span class="dim">-</span>
-                        </div>
+                    <div class="strategy-income">
+                        <label class="section-label">Top Income Sources</label>
+                        <div id="strategy-income" class="income-bars"></div>
                     </div>
                 </div>
-                <div class="strategy-income">
-                    <label class="section-label">Top Income Sources</label>
-                    <div id="strategy-income" class="income-bars"></div>
+
+                <!-- Bot Activity + Buffs -->
+                <div class="card">
+                    <h2>Bot Activity</h2>
+                    <div class="stat-grid">
+                        <div class="stat"><label>Clicks</label><span id="total-clicks">0</span></div>
+                        <div class="stat"><label>Golden</label><span id="golden-clicked">0</span></div>
+                        <div class="stat"><label>Buildings</label><span id="buildings-bought">0</span></div>
+                        <div class="stat"><label>Upgrades</label><span id="upgrades-bought">0</span></div>
+                        <div class="stat"><label>Ascensions</label><span id="ascensions">0</span></div>
+                        <div class="stat"><label>Season</label><span id="season">none</span></div>
+                    </div>
+                    <div class="buffs-section">
+                        <label class="section-label">Active Buffs</label>
+                        <div id="buffs-list" class="buffs-list"><span class="dim">None</span></div>
+                    </div>
+                </div>
+
+                <!-- Minigame Summary -->
+                <div class="card">
+                    <h2>Minigames</h2>
+                    <div class="stat-grid">
+                        <div class="stat"><label>Garden</label><span id="garden-phase">-</span></div>
+                        <div class="stat"><label>Grimoire</label><span id="grimoire-status">-</span></div>
+                        <div class="stat"><label>Market</label><span id="market-status">-</span></div>
+                    </div>
+                </div>
+
+                <!-- CPS Chart -->
+                <div class="card chart-card">
+                    <h2>CPS History</h2>
+                    <canvas id="cps-chart"></canvas>
                 </div>
             </div>
+        </div>
 
-            <!-- Bot Activity + Buffs -->
-            <div class="card">
-                <h2>Bot Activity</h2>
-                <div class="stat-grid">
-                    <div class="stat">
-                        <label>Clicks</label>
-                        <span id="total-clicks">0</span>
+        <!-- ==================== TAB: MARKET ==================== -->
+        <div class="tab-content" id="tab-market">
+            <div class="grid">
+                <div class="card" style="grid-column:span 2">
+                    <h2>Stock Market <span class="dim">(Hidden Data)</span></h2>
+                    <div id="market-info" class="market-info">
+                        <span class="dim">Waiting for Banks...</span>
                     </div>
-                    <div class="stat">
-                        <label>Golden</label>
-                        <span id="golden-clicked">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Buildings</label>
-                        <span id="buildings-bought">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Upgrades</label>
-                        <span id="upgrades-bought">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Ascensions</label>
-                        <span id="ascensions">0</span>
-                    </div>
-                    <div class="stat">
-                        <label>Season</label>
-                        <span id="season">none</span>
-                    </div>
-                </div>
-                <div class="buffs-section">
-                    <label class="section-label">Active Buffs</label>
-                    <div id="buffs-list" class="buffs-list">
-                        <span class="dim">None</span>
-                    </div>
+                    <table id="market-table">
+                        <thead>
+                            <tr>
+                                <th>Sym</th><th>Price</th><th>Rest</th><th>%</th>
+                                <th>Mode</th><th>Ticks</th><th>Delta</th><th>Held</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
+        </div>
 
-            <!-- Sugar Lump Approval -->
-            <div class="card lump-card" id="lump-card" style="display:none">
-                <h2>Sugar Lumps</h2>
-                <div id="lump-header" class="lump-header"></div>
-                <div id="lump-options" class="lump-options"></div>
-                <button class="btn-skip" onclick="skipLumps()">Skip - save lumps</button>
-            </div>
-
-            <!-- Garden -->
-            <div class="card garden-card">
-                <h2>Garden <span class="dim" id="garden-phase-tag"></span></h2>
-                <div class="garden-info-row">
-                    <span id="garden-seeds" class="dim"></span>
-                    <span id="garden-soil" class="dim"></span>
-                    <span id="garden-mutation" class="dim"></span>
-                </div>
-                <div id="garden-grid" class="garden-grid"></div>
-            </div>
-
-            <!-- Minigame Status -->
-            <div class="card">
-                <h2>Minigames</h2>
-                <div class="stat-grid">
-                    <div class="stat">
-                        <label>Garden</label>
-                        <span id="garden-phase">-</span>
+        <!-- ==================== TAB: GARDEN ==================== -->
+        <div class="tab-content" id="tab-garden">
+            <div class="grid">
+                <div class="card" style="grid-column:span 2">
+                    <h2>Garden <span class="dim" id="garden-phase-tag"></span></h2>
+                    <div class="garden-info-row">
+                        <span id="garden-seeds" class="dim"></span>
+                        <span id="garden-soil" class="dim"></span>
+                        <span id="garden-mutation" class="dim"></span>
                     </div>
-                    <div class="stat">
-                        <label>Grimoire</label>
-                        <span id="grimoire-status">-</span>
-                    </div>
-                    <div class="stat">
-                        <label>Market</label>
-                        <span id="market-status">-</span>
+                    <div id="garden-grid" class="garden-grid"></div>
+                    <div class="garden-legend">
+                        <span><span class="legend-dot" style="background:#2d5a1a;border:1px solid #4ade80"></span> Mature</span>
+                        <span><span class="legend-dot" style="background:#1a3a1a;border:1px solid #2d5a2d"></span> Growing</span>
+                        <span><span class="legend-dot" style="background:#3a2a1a;border:1px dashed #fbbf24"></span> Mutation Target</span>
+                        <span><span class="legend-dot" style="background:var(--accent2)"></span> Empty</span>
+                        <span class="dim">MP=Mutation Parent &nbsp; F=Farming</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Controls -->
-            <div class="card">
-                <h2>Controls</h2>
-                <div class="controls">
-                    <button id="btn-startstop" onclick="toggleBot()">Stop Bot</button>
-                    <button onclick="reinjectBot()">Re-inject</button>
-                    <button onclick="saveGame()">Save</button>
-                    <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
-                </div>
-                <div class="module-toggles">
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_click', this.checked)"> Clicker</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_pop_golden', this.checked)"> Golden</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('market_enabled', this.checked)"> Market</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('garden_enabled', this.checked)"> Garden</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('grimoire_enabled', this.checked)"> Grimoire</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pantheon_enabled', this.checked)"> Pantheon</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('dragon_enabled', this.checked)"> Dragon</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_season_cycle', this.checked)"> Seasons</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pop_wrinklers', this.checked)"> Wrinklers</label>
-                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_harvest_lumps', this.checked)"> Lumps</label>
+        <!-- ==================== TAB: BUILDINGS ==================== -->
+        <div class="tab-content" id="tab-buildings">
+            <div class="grid">
+                <div class="card" style="grid-column:span 2">
+                    <h2>Buildings</h2>
+                    <table id="buildings-table">
+                        <thead>
+                            <tr><th>Building</th><th>#</th><th>CPS</th><th>Price</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
+        </div>
 
-            <!-- Buildings -->
-            <div class="card buildings-card">
-                <h2>Buildings</h2>
-                <table id="buildings-table">
-                    <thead>
-                        <tr><th>Building</th><th>#</th><th>CPS</th><th>Price</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <!-- Stock Market -->
-            <div class="card market-card">
-                <h2>Stock Market <span class="dim">(Hidden Data)</span></h2>
-                <div id="market-info" class="market-info">
-                    <span class="dim">Waiting for Banks...</span>
+        <!-- ==================== TAB: LOG ==================== -->
+        <div class="tab-content" id="tab-log">
+            <div class="grid">
+                <div class="card" style="grid-column:span 2">
+                    <h2>Action Log</h2>
+                    <div id="action-log" class="log" style="max-height:600px"></div>
                 </div>
-                <table id="market-table">
-                    <thead>
-                        <tr>
-                            <th>Sym</th><th>Price</th><th>Rest</th><th>%</th>
-                            <th>Mode</th><th>Ticks</th><th>Delta</th><th>Held</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
             </div>
+        </div>
 
-            <!-- CPS Chart -->
-            <div class="card chart-card">
-                <h2>CPS History</h2>
-                <canvas id="cps-chart"></canvas>
-            </div>
-
-            <!-- Action Log -->
-            <div class="card log-card">
-                <h2>Action Log</h2>
-                <div id="action-log" class="log"></div>
+        <!-- ==================== TAB: SETTINGS ==================== -->
+        <div class="tab-content" id="tab-settings">
+            <div class="grid">
+                <div class="card">
+                    <h2>Bot Controls</h2>
+                    <div class="controls">
+                        <button id="btn-startstop" onclick="toggleBot()">Stop Bot</button>
+                        <button onclick="reinjectBot()">Re-inject</button>
+                        <button onclick="saveGame()">Save</button>
+                        <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Module Toggles</h2>
+                    <div class="module-toggles">
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_click', this.checked)"> Clicker</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_pop_golden', this.checked)"> Golden Cookies</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('market_enabled', this.checked)"> Market</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('garden_enabled', this.checked)"> Garden</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('grimoire_enabled', this.checked)"> Grimoire</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pantheon_enabled', this.checked)"> Pantheon</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('dragon_enabled', this.checked)"> Dragon</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_season_cycle', this.checked)"> Seasons</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pop_wrinklers', this.checked)"> Wrinklers</label>
+                        <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_harvest_lumps', this.checked)"> Sugar Lumps</label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

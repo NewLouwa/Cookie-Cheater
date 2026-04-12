@@ -128,6 +128,46 @@ header h1 { font-size: 1.25rem; color: var(--accent); letter-spacing: 0.05em; }
     to { opacity: 0.5; }
 }
 
+/* Tabs */
+.tab-nav {
+    display: flex;
+    gap: 0;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--card-border);
+    padding: 0 0.5rem;
+    overflow-x: auto;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--dim);
+    padding: 0.6rem 1.2rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    border-radius: 0;
+}
+.tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Floating lump card */
+.lump-card {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 100;
+    max-width: 380px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    border-color: var(--yellow);
+}
+
 /* Grid */
 .grid {
     display: grid;
@@ -319,7 +359,6 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
 /* Garden grid */
-.garden-card { grid-column: span 2; }
 .garden-info-row { display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.78rem; }
 .garden-grid {
     display: grid;
@@ -363,8 +402,25 @@ button:hover { background: var(--accent); border-color: var(--accent); }
     color: var(--yellow);
 }
 
+.garden-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--dim);
+    flex-wrap: wrap;
+    align-items: center;
+}
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+
 /* Sugar Lump approval card */
-.lump-card { border-color: var(--yellow); }
 .lump-header { font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--dim); }
 .lump-options { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
 

@@ -465,6 +465,23 @@ async function refreshActionLog() {
     } catch (e) {}
 }
 
+// === Tab navigation ===
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // Re-init chart when switching to overview (canvas resize issue)
+    if (tabName === 'overview' && cpsChart) {
+        setTimeout(() => cpsChart.resize(), 50);
+    }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
 // Init
 connect();
 setInterval(refreshActionLog, 3000);
