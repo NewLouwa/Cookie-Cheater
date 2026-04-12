@@ -1,0 +1,110 @@
+/* ============================================================================
+ * Cookie Clicker game sprites for dashboard UI
+ * CDN: https://cdn.dashnet.org/cookieclicker/img/
+ * ============================================================================ */
+
+:root {
+    --cc-cdn: https://cdn.dashnet.org/cookieclicker/img;
+}
+
+/* Generic game icon (inline, 24x24) */
+.cc-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    vertical-align: middle;
+    margin-right: 5px;
+    flex-shrink: 0;
+}
+
+/* Small version (16x16) */
+.cc-icon-sm { width: 16px; height: 16px; margin-right: 3px; }
+/* Large version (32x32) */
+.cc-icon-lg { width: 32px; height: 32px; margin-right: 6px; }
+
+/* Cookie */
+.cc-cookie { background-image: url('https://cdn.dashnet.org/cookieclicker/img/perfectCookie.png'); }
+/* Golden Cookie */
+.cc-golden { background-image: url('https://cdn.dashnet.org/cookieclicker/img/goldCookie.png'); }
+/* Wrath Cookie */
+.cc-wrath { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wrathCookie.png'); }
+/* Sugar Lump */
+.cc-lump { background-image: url('https://cdn.dashnet.org/cookieclicker/img/sugarLump.png'); }
+/* Wrinkler */
+.cc-wrinkler { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wrinkler.png'); }
+/* Shiny Wrinkler */
+.cc-shiny-wrinkler { background-image: url('https://cdn.dashnet.org/cookieclicker/img/shinyWrinkler.png'); }
+/* Dragon */
+.cc-dragon { background-image: url('https://cdn.dashnet.org/cookieclicker/img/dragon.png'); }
+/* Prestige star */
+.cc-prestige { background-image: url('https://cdn.dashnet.org/cookieclicker/img/heavenlyMoney.png'); }
+/* Money (for market) */
+.cc-money { background-image: url('https://cdn.dashnet.org/cookieclicker/img/money.png'); }
+/* Level up */
+.cc-levelup { background-image: url('https://cdn.dashnet.org/cookieclicker/img/levelUp.png'); }
+/* Santa */
+.cc-santa { background-image: url('https://cdn.dashnet.org/cookieclicker/img/santa.png'); background-position: 0 0; }
+/* Lock */
+.cc-lock { background-image: url('https://cdn.dashnet.org/cookieclicker/img/lockOn.png'); }
+/* Nest (easter) */
+.cc-nest { background-image: url('https://cdn.dashnet.org/cookieclicker/img/nest.png'); }
+
+/* === BUILDINGS (individual sprites) === */
+.cc-cursor { background-image: url('https://cdn.dashnet.org/cookieclicker/img/cursor.png'); }
+.cc-grandma { background-image: url('https://cdn.dashnet.org/cookieclicker/img/grandma.png'); background-position: 0 0; }
+.cc-farm { background-image: url('https://cdn.dashnet.org/cookieclicker/img/farm.png'); }
+.cc-mine { background-image: url('https://cdn.dashnet.org/cookieclicker/img/mine.png'); }
+.cc-factory { background-image: url('https://cdn.dashnet.org/cookieclicker/img/factory.png'); }
+.cc-bank { background-image: url('https://cdn.dashnet.org/cookieclicker/img/bank.png'); }
+.cc-temple { background-image: url('https://cdn.dashnet.org/cookieclicker/img/temple.png'); }
+.cc-wizard { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wizardtower.png'); }
+.cc-shipment { background-image: url('https://cdn.dashnet.org/cookieclicker/img/shipment.png'); }
+.cc-alchemy { background-image: url('https://cdn.dashnet.org/cookieclicker/img/alchemylab.png'); }
+.cc-portal { background-image: url('https://cdn.dashnet.org/cookieclicker/img/portal.png'); }
+.cc-timemachine { background-image: url('https://cdn.dashnet.org/cookieclicker/img/timemachine.png'); }
+.cc-antimatter { background-image: url('https://cdn.dashnet.org/cookieclicker/img/antimattercondenser.png'); }
+.cc-prism { background-image: url('https://cdn.dashnet.org/cookieclicker/img/prism.png'); }
+.cc-chancemaker { background-image: url('https://cdn.dashnet.org/cookieclicker/img/chancemaker.png'); }
+.cc-fractal { background-image: url('https://cdn.dashnet.org/cookieclicker/img/fractalEngine.png'); }
+.cc-jsconsole { background-image: url('https://cdn.dashnet.org/cookieclicker/img/javascriptconsole.png'); }
+.cc-idleverse { background-image: url('https://cdn.dashnet.org/cookieclicker/img/idleverse.png'); }
+.cc-cortex { background-image: url('https://cdn.dashnet.org/cookieclicker/img/cortex.png'); }
+.cc-you { background-image: url('https://cdn.dashnet.org/cookieclicker/img/you.png'); }
+
+/* Building sprite lookup by ID */
+.cc-building-0 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/cursor.png'); }
+.cc-building-1 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/grandma.png'); background-position: 0 0; }
+.cc-building-2 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/farm.png'); }
+.cc-building-3 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/mine.png'); }
+.cc-building-4 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/factory.png'); }
+.cc-building-5 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/bank.png'); }
+.cc-building-6 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/temple.png'); }
+.cc-building-7 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wizardtower.png'); }
+.cc-building-8 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/shipment.png'); }
+.cc-building-9 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/alchemylab.png'); }
+.cc-building-10 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/portal.png'); }
+.cc-building-11 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/timemachine.png'); }
+.cc-building-12 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/antimattercondenser.png'); }
+.cc-building-13 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/prism.png'); }
+.cc-building-14 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/chancemaker.png'); }
+.cc-building-15 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/fractalEngine.png'); }
+.cc-building-16 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/javascriptconsole.png'); }
+.cc-building-17 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/idleverse.png'); }
+.cc-building-18 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/cortex.png'); }
+.cc-building-19 { background-image: url('https://cdn.dashnet.org/cookieclicker/img/you.png'); }
+
+/* === MINIGAME BACKGROUNDS === */
+.cc-bg-garden { background-image: url('https://cdn.dashnet.org/cookieclicker/img/farmBackground.png'); }
+.cc-bg-market { background-image: url('https://cdn.dashnet.org/cookieclicker/img/bankBackground.png'); }
+.cc-bg-pantheon { background-image: url('https://cdn.dashnet.org/cookieclicker/img/templeBackground.png'); }
+.cc-bg-grimoire { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wizardtowerBackground.png'); }
+
+/* Header background with game flair */
+.cc-header-bg {
+    background-image: url('https://cdn.dashnet.org/cookieclicker/img/panelMenu.png');
+    background-size: cover;
+    background-position: center;
+}

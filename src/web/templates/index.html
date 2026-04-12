@@ -6,12 +6,14 @@
     <title>CookieCheater</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/goods.css">
+    <link rel="stylesheet" href="/static/css/sprites.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
     <div id="app">
         <header>
             <div class="header-left">
+                <span class="cc-icon cc-cookie"></span>
                 <h1>CookieCheater</h1>
                 <span id="purchaser-phase" class="purchaser-phase"></span>
             </div>
@@ -26,7 +28,7 @@
         <div class="top-bar">
             <div class="metric">
                 <span class="metric-value" id="cookies">0</span>
-                <span class="metric-label">Cookies</span>
+                <span class="metric-label"><span class="cc-icon cc-icon-sm cc-cookie"></span> Cookies</span>
             </div>
             <div class="metric">
                 <span class="metric-value" id="cps">0</span>
@@ -34,15 +36,15 @@
             </div>
             <div class="metric">
                 <span class="metric-value" id="prestige">0</span>
-                <span class="metric-label">Prestige</span>
+                <span class="metric-label"><span class="cc-icon cc-icon-sm cc-prestige"></span> Prestige</span>
             </div>
             <div class="metric">
                 <span class="metric-value" id="heavenly-chips">0</span>
-                <span class="metric-label">HC</span>
+                <span class="metric-label"><span class="cc-icon cc-icon-sm cc-prestige"></span> HC</span>
             </div>
             <div class="metric">
                 <span class="metric-value" id="lumps">0</span>
-                <span class="metric-label">Lumps</span>
+                <span class="metric-label"><span class="cc-icon cc-icon-sm cc-lump"></span> Lumps</span>
             </div>
             <div class="metric lucky-bank-metric">
                 <div class="lucky-bar-wrap">
@@ -59,12 +61,12 @@
 
         <!-- Tab navigation -->
         <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="overview">Overview</button>
-            <button class="tab-btn" data-tab="market">Market</button>
-            <button class="tab-btn" data-tab="garden">Garden</button>
-            <button class="tab-btn" data-tab="grimoire">Grimoire</button>
-            <button class="tab-btn" data-tab="pantheon">Pantheon</button>
-            <button class="tab-btn" data-tab="buildings">Buildings</button>
+            <button class="tab-btn active" data-tab="overview"><span class="cc-icon cc-icon-sm cc-cookie"></span> Overview</button>
+            <button class="tab-btn" data-tab="market"><span class="cc-icon cc-icon-sm cc-money"></span> Market</button>
+            <button class="tab-btn" data-tab="garden"><span class="cc-icon cc-icon-sm cc-farm"></span> Garden</button>
+            <button class="tab-btn" data-tab="grimoire"><span class="cc-icon cc-icon-sm cc-wizard"></span> Grimoire</button>
+            <button class="tab-btn" data-tab="pantheon"><span class="cc-icon cc-icon-sm cc-temple"></span> Pantheon</button>
+            <button class="tab-btn" data-tab="buildings"><span class="cc-icon cc-icon-sm cc-factory"></span> Buildings</button>
             <button class="tab-btn" data-tab="log">Log</button>
             <button class="tab-btn" data-tab="settings">Settings</button>
         </nav>
@@ -111,7 +113,7 @@
                     <h2>Bot Activity</h2>
                     <div class="stat-grid">
                         <div class="stat"><label>Clicks</label><span id="total-clicks">0</span></div>
-                        <div class="stat"><label>Golden</label><span id="golden-clicked">0</span></div>
+                        <div class="stat"><label><span class="cc-icon cc-icon-sm cc-golden"></span> Golden</label><span id="golden-clicked">0</span></div>
                         <div class="stat"><label>Buildings</label><span id="buildings-bought">0</span></div>
                         <div class="stat"><label>Upgrades</label><span id="upgrades-bought">0</span></div>
                         <div class="stat"><label>Ascensions</label><span id="ascensions">0</span></div>

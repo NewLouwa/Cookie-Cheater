@@ -452,6 +452,23 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
 /* Minigame common */
+/* Minigame tab background hints */
+#tab-grimoire .card {
+    background: var(--card-bg) url('https://cdn.dashnet.org/cookieclicker/img/grimoireBG.png') bottom right no-repeat;
+    background-size: 180px auto;
+    background-blend-mode: soft-light;
+}
+#tab-pantheon .card {
+    background: var(--card-bg) url('https://cdn.dashnet.org/cookieclicker/img/pantheonBG.png') bottom right no-repeat;
+    background-size: 180px auto;
+    background-blend-mode: soft-light;
+}
+#tab-garden .card:last-child {
+    background: var(--card-bg) url('https://cdn.dashnet.org/cookieclicker/img/gardenPlots.png') bottom right no-repeat;
+    background-size: 120px auto;
+    background-blend-mode: soft-light;
+}
+
 .mg-objective {
     margin-bottom: 0.75rem;
     padding: 0.5rem 0.7rem;

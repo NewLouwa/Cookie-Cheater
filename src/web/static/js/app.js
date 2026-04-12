@@ -131,7 +131,7 @@ function updateDashboard(data) {
         tbody.innerHTML = data.buildings
             .filter(b => !b.locked && b.amount > 0)
             .map(b => `<tr>
-                <td>${b.name}</td>
+                <td><span class="cc-icon cc-icon-sm cc-building-${b.id}"></span>${b.name}</td>
                 <td>${b.amount}</td>
                 <td>${formatNumber(b.totalCps)}/s</td>
                 <td>${formatNumber(b.price)}</td>
