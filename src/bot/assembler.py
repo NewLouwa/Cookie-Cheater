@@ -45,6 +45,13 @@ def assemble_bot(config=None):
             with open(filepath, "r", encoding="utf-8") as f:
                 module_parts.append(f"// === {filename} ===\n{f.read()}")
 
+    # Read knowledge base (kb.js)
+    kb_path = os.path.join(bot_dir, "kb.js")
+    kb_code = ""
+    if os.path.isfile(kb_path):
+        with open(kb_path, "r", encoding="utf-8") as f:
+            kb_code = f"// === Knowledge Base ===\n{f.read()}"
+
     # Build the final script
     parts = [
         "(function() {",
@@ -55,6 +62,8 @@ def assemble_bot(config=None):
         "}",
         "",
         engine_code,
+        "",
+        kb_code,
         "",
         "\n\n".join(module_parts),
         "",

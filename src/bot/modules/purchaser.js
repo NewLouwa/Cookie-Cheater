@@ -72,7 +72,7 @@ CookieCheater.modules.purchaser = {
             if (bestUpgrade.payback <= buildingPayback) {
                 bestUpgrade.ref.buy();
                 CookieCheater.stats.upgradesBought++;
-                CookieCheater.log("purchaser", "buy_upgrade", bestUpgrade.name + " ($" + this._fmt(bestUpgrade.price) + ")");
+                CookieCheater.log("purchaser", "buy_upgrade", bestUpgrade.name + " [" + (bestUpgrade.category || "?") + "] ($" + this._fmt(bestUpgrade.price) + ")");
                 this._lastPurchaseTime = Date.now();
                 this.currentPhase = "bought upgrade: " + bestUpgrade.name;
                 return;
@@ -184,6 +184,8 @@ CookieCheater.modules.purchaser = {
     },
 
     _findBestUpgrade: function(cookies, cps) {
+        if (!CookieCheater.KB) return null; // KB not loaded yet
+
         var best = null;
         var bestPayback = Infinity;
 
@@ -191,77 +193,42 @@ CookieCheater.modules.purchaser = {
             var u = Game.UpgradesInStore[i];
             if (u.bought) continue;
 
-            var price = u.basePrice;
-            var deltaCps = this._estimateUpgradeDeltaCps(u, cps);
+            // Use Knowledge Base to analyze this upgrade
+            var analysis = CookieCheater.KB.analyzeUpgrade(u, cps);
 
-            var payback;
-            if (deltaCps > 0) {
-                payback = price / deltaCps;
-            } else {
-                // Non-CPS upgrade: buy if cheap enough (scaled by game phase)
+            // Skip upgrades managed by other modules (Elder Pledge, season switchers)
+            if (analysis.skip) continue;
+
+            var payback = analysis.payback;
+
+            // For unknown/low-value upgrades, still buy if cheap
+            if (analysis.category === "unknown" && analysis.value <= 0) {
                 var phase = CookieCheater.getPhase();
                 var maxMinutes = phase === "early" ? 2 : phase === "mid" ? 5 : 10;
-                var minutesCost = price / Math.max(cps * 60, 0.001);
-                if (minutesCost <= maxMinutes) {
-                    payback = price / Math.max(cps * 0.1, 0.001);
-                } else {
-                    continue;
-                }
+                var minutesCost = u.basePrice / Math.max(cps * 60, 0.001);
+                if (minutesCost > maxMinutes) continue;
             }
 
             if (payback < bestPayback) {
                 bestPayback = payback;
-                best = { ref: u, name: u.name, price: price, payback: payback, affordable: u.canBuy() };
+                best = {
+                    ref: u,
+                    name: u.name,
+                    price: u.basePrice,
+                    payback: payback,
+                    affordable: u.canBuy(),
+                    category: analysis.category,
+                    priority: analysis.priority
+                };
             }
         }
 
         return best;
     },
 
-    _estimateUpgradeDeltaCps: function(upgrade, cps) {
-        // Building-tied upgrades (doubles that building's output)
-        if (upgrade.buildingTie1 && upgrade.buildingTie1.storedTotalCps > 0) {
-            return upgrade.buildingTie1.storedTotalCps;
-        }
-        if (upgrade.buildingTie && upgrade.buildingTie.storedTotalCps > 0) {
-            return upgrade.buildingTie.storedTotalCps;
-        }
-
-        // Parse description for "twice as efficient"
-        var desc = upgrade.desc || "";
-        if (desc.indexOf("twice") !== -1) {
-            for (var i = 0; i < Game.ObjectsById.length; i++) {
-                var b = Game.ObjectsById[i];
-                if (b.locked) continue;
-                if ((b.plural && desc.indexOf(b.plural) !== -1) ||
-                    desc.indexOf(b.name) !== -1) {
-                    return b.storedTotalCps;
-                }
-            }
-        }
-
-        // Synergy upgrades
-        if (desc.indexOf("synergy") !== -1 || desc.indexOf("+5%") !== -1) {
-            return cps * 0.05;
-        }
-
-        // Percentage-based cookie upgrades ("+X%")
-        var pctMatch = desc.match(/\+(\d+)%/);
-        if (pctMatch) {
-            return cps * parseInt(pctMatch[1]) / 100;
-        }
-
-        // Kitten upgrades: huge multiplier based on milk
-        if (desc.indexOf("milk") !== -1 && upgrade.name.indexOf("Kitten") !== -1) {
-            return cps * 0.2; // Rough estimate: ~20% boost
-        }
-
-        return 0;
-    },
-
     _buyAffordableCheapUpgrades: function(cookies, cps) {
-        // Adaptive threshold: buy upgrades costing less than X seconds of CPS
-        // Early game: 120s, Mid: 60s, Late: 30s
+        // Buy any affordable upgrade that's cheap relative to income
+        // Uses KB to skip module-managed upgrades (Elder Pledge, season switchers)
         var phase = CookieCheater.getPhase();
         var seconds = phase === "early" ? 120 : phase === "mid" ? 60 : 30;
         var threshold = cps * seconds;
@@ -269,10 +236,18 @@ CookieCheater.modules.purchaser = {
         for (var i = 0; i < Game.UpgradesInStore.length; i++) {
             var u = Game.UpgradesInStore[i];
             if (u.bought || !u.canBuy()) continue;
+
+            // Skip module-managed upgrades
+            if (CookieCheater.KB) {
+                var analysis = CookieCheater.KB.analyzeUpgrade(u, cps);
+                if (analysis.skip) continue;
+            }
+
             if (u.basePrice <= threshold) {
                 u.buy();
                 CookieCheater.stats.upgradesBought++;
-                CookieCheater.log("purchaser", "buy_cheap_upgrade", u.name);
+                var cat = CookieCheater.KB ? CookieCheater.KB.analyzeUpgrade(u, cps).category : "?";
+                CookieCheater.log("purchaser", "buy_cheap", u.name + " [" + cat + "]");
                 this._lastPurchaseTime = Date.now();
                 return true;
             }
