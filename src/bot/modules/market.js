@@ -21,6 +21,7 @@ CookieCheater.modules.market = {
     _stats: { totalTrades: 0, wins: 0, losses: 0, totalPnL: 0 },
     _tradeLog: [],      // Structured trades for DB persistence
     _tradeLogMax: 200,
+    _prevModes: {},     // { goodId: mode } — previous tick's mode, for transition detection
 
     _recordTrade: function(action, g, qty, price, analysis, oh, netPct, pnl) {
         this._tradeLog.push({
@@ -114,8 +115,39 @@ CookieCheater.modules.market = {
             score -= 15; reasons.push("Overvalued (" + (ratio * 100).toFixed(0) + "%)");
         }
 
-        // === MODE (medium signal) ===
+        // === MODE TRANSITION DETECTION ===
+        // This is the killer edge: we see the hidden mode change before the price moves
         var modeNames = ["Stable", "Slow Rise", "Slow Fall", "Fast Rise", "Fast Fall", "Chaotic"];
+        var prevMode = this._prevModes[g.id];
+        var modeChanged = (prevMode !== undefined && prevMode !== mode);
+        this._prevModes[g.id] = mode;
+
+        if (modeChanged) {
+            var wasRising = (prevMode === 1 || prevMode === 3); // Was Slow/Fast Rise
+            var wasFalling = (prevMode === 2 || prevMode === 4); // Was Slow/Fast Fall
+            var nowRising = (mode === 1 || mode === 3);
+            var nowFalling = (mode === 2 || mode === 4);
+
+            if (!wasRising && nowRising) {
+                // TRANSITION TO RISE — strong buy signal
+                score += 25;
+                reasons.push("MODE SHIFT: " + modeNames[prevMode] + " -> " + modeNames[mode] + " — BUY WINDOW!");
+            } else if (wasRising && nowFalling) {
+                // TRANSITION FROM RISE TO FALL — strong sell signal
+                score -= 25;
+                reasons.push("MODE SHIFT: " + modeNames[prevMode] + " -> " + modeNames[mode] + " — SELL NOW!");
+            } else if (wasRising && !nowRising) {
+                // Rise ended but not falling (Stable/Chaotic) — moderate sell
+                score -= 10;
+                reasons.push("MODE SHIFT: " + modeNames[prevMode] + " -> " + modeNames[mode] + " — rise ended");
+            } else if (wasFalling && !nowFalling) {
+                // Fall ended (Stable/Chaotic/Rise) — potential bottom
+                score += 12;
+                reasons.push("MODE SHIFT: " + modeNames[prevMode] + " -> " + modeNames[mode] + " — fall ended, potential bottom");
+            }
+        }
+
+        // === MODE (current state signal) ===
         switch (mode) {
             case 1: // Slow Rise
                 if (dur > 200) { score += 20; reasons.push("Slow Rise, long runway (" + dur + "t)"); }
