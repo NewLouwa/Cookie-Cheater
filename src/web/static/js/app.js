@@ -472,7 +472,7 @@ function updateGardenGrid(info) {
                     <span class="gs-check">${icon}</span>
                     <span class="gs-child">${m.child}</span>
                     <span class="gs-parents">${parents}</span>
-                    <span class="gs-chance">${(m.chance * 100)}%</span>
+                    <span class="gs-chance">${(m.chance * 100).toFixed(1)}%</span>
                 </div>`;
             }).join('');
         } else {
@@ -509,10 +509,10 @@ function updateGardenGrid(info) {
                 </div>`;
             } else {
                 const cls = t.mature ? 'mature' : 'planted';
-                const shortName = (t.plant || '?').split(' ').map(w => w[0]).join('').substring(0, 3);
+                const iconId = t.plantIcon !== undefined ? t.plantIcon : 0;
                 const goalTag = goal ? (goal.goal === 'mutation_parent' ? 'MP' : goal.goal === 'farming' ? 'F' : '') : '';
                 html += `<div class="garden-tile ${cls}" title="${t.plant} — age ${t.pct}%${t.mature ? ' MATURE' : ''} ${goal ? '('+goal.goal+')' : ''}">
-                    <span class="tile-name">${shortName}</span>
+                    <span class="cc-plant cc-plant-${iconId}" style="margin:0"></span>
                     ${goalTag ? '<span class="tile-goal">' + goalTag + '</span>' : ''}
                     <div class="tile-bar"><div class="tile-bar-fill" style="width:${t.pct}%;background:${t.mature ? '#4ade80' : '#60a5fa'}"></div></div>
                 </div>`;

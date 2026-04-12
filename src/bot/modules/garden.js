@@ -63,6 +63,7 @@ CookieCheater.modules.garden = {
                 if (!info.empty) {
                     var plant = M.plantsById[tile[0] - 1];
                     info.plant = plant ? plant.name : "?";
+                    info.plantIcon = plant ? (plant.icon || 0) : 0;
                     info.age = tile[1];
                     info.mature = plant ? (tile[1] >= (plant.mature || 0.5) * 100) : false;
                     info.matureAge = plant ? Math.round((plant.mature || 0.5) * 100) : 50;

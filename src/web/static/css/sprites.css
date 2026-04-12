@@ -102,9 +102,109 @@
 .cc-bg-pantheon { background-image: url('https://cdn.dashnet.org/cookieclicker/img/templeBackground.png'); }
 .cc-bg-grimoire { background-image: url('https://cdn.dashnet.org/cookieclicker/img/wizardtowerBackground.png'); }
 
-/* Header background with game flair */
-.cc-header-bg {
-    background-image: url('https://cdn.dashnet.org/cookieclicker/img/panelMenu.png');
-    background-size: cover;
-    background-position: center;
+/* === ICONS FROM icons.png SPRITESHEET (48x48 grid) === */
+.cc-sprite {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 4px;
+    position: relative;
 }
+.cc-sprite::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 48px;
+    background-image: url('https://cdn.dashnet.org/cookieclicker/img/icons.png');
+    background-repeat: no-repeat;
+    transform: scale(0.458);
+    transform-origin: top left;
+    position: absolute;
+    top: 0; left: 0;
+}
+
+/* Grimoire spell icons — icons.png [col, row] where each cell = 48px */
+.cc-spell-0::after { background-position: -1008px -528px; }  /* Conjure Baked Goods */
+.cc-spell-1::after { background-position: -1056px -528px; }  /* Force the Hand of Fate */
+.cc-spell-2::after { background-position: -1104px -528px; }  /* Stretch Time */
+.cc-spell-3::after { background-position: -1152px -528px; }  /* Spontaneous Edifice */
+.cc-spell-4::after { background-position: -1200px -528px; }  /* Haggler's Charm */
+.cc-spell-5::after { background-position: -1248px -528px; }  /* Summon Crafty Pixies */
+.cc-spell-6::after { background-position: -1296px -528px; }  /* Gambler's Fever Dream */
+.cc-spell-7::after { background-position: -1344px -528px; }  /* Resurrect Abomination */
+.cc-spell-8::after { background-position: -1392px -528px; }  /* Diminish Ineptitude */
+
+/* Pantheon spirit icons — icons.png [col, 18] and [col, 19] */
+.cc-god-0::after  { background-position: -1008px -864px; }  /* Holobore */
+.cc-god-1::after  { background-position: -1056px -864px; }  /* Vomitrax */
+.cc-god-2::after  { background-position: -1104px -864px; }  /* Godzamok */
+.cc-god-3::after  { background-position: -1152px -864px; }  /* Cyclius */
+.cc-god-4::after  { background-position: -1200px -864px; }  /* Selebrak */
+.cc-god-5::after  { background-position: -1248px -864px; }  /* Dotjeiess */
+.cc-god-6::after  { background-position: -1296px -864px; }  /* Muridal */
+.cc-god-7::after  { background-position: -1344px -864px; }  /* Jeremy */
+.cc-god-8::after  { background-position: -1392px -864px; }  /* Mokalsium */
+.cc-god-9::after  { background-position: -1008px -912px; }  /* Skruuia */
+.cc-god-10::after { background-position: -1056px -912px; }  /* Rigidel */
+
+/* === GARDEN PLANT ICONS from gardenPlants.png === */
+/* Each row = one plant, col 5 = mature stage, 48x48 grid */
+.cc-plant {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-right: 4px;
+    position: relative;
+}
+.cc-plant::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 48px;
+    background-image: url('https://cdn.dashnet.org/cookieclicker/img/gardenPlants.png');
+    background-repeat: no-repeat;
+    transform: scale(0.458);
+    transform-origin: top left;
+    position: absolute;
+    top: 0; left: 0;
+}
+
+/* Plant icons (mature stage at col 5 = -240px, row = icon * 48) */
+.cc-plant-0::after  { background-position: -240px 0px; }      /* Baker's wheat */
+.cc-plant-1::after  { background-position: -240px -48px; }    /* Thumbcorn */
+.cc-plant-2::after  { background-position: -240px -96px; }    /* Cronerice */
+.cc-plant-3::after  { background-position: -240px -144px; }   /* Gildmillet */
+.cc-plant-4::after  { background-position: -240px -192px; }   /* Ordinary clover */
+.cc-plant-5::after  { background-position: -240px -240px; }   /* Golden clover */
+.cc-plant-6::after  { background-position: -240px -288px; }   /* Shimmerlily */
+.cc-plant-7::after  { background-position: -240px -336px; }   /* Elderwort */
+.cc-plant-8::after  { background-position: -240px -384px; }   /* Bakeberry */
+.cc-plant-9::after  { background-position: -240px -432px; }   /* Chocoroot */
+.cc-plant-10::after { background-position: -240px -480px; }   /* White chocoroot */
+.cc-plant-11::after { background-position: -240px -528px; }   /* Whiskerbloom */
+.cc-plant-12::after { background-position: -240px -576px; }   /* Chimerose */
+.cc-plant-13::after { background-position: -240px -624px; }   /* Nursetulip */
+.cc-plant-14::after { background-position: -240px -672px; }   /* Drowsyfern */
+.cc-plant-15::after { background-position: -240px -720px; }   /* Wardlichen */
+.cc-plant-16::after { background-position: -240px -768px; }   /* Keenmoss */
+.cc-plant-17::after { background-position: -240px -816px; }   /* Queenbeet */
+.cc-plant-18::after { background-position: -240px -864px; }   /* Juicy queenbeet */
+.cc-plant-19::after { background-position: -240px -912px; }   /* Duketater */
+.cc-plant-20::after { background-position: -240px -960px; }   /* Crumbspore */
+.cc-plant-21::after { background-position: -240px -1008px; }  /* Glovemorel */
+.cc-plant-22::after { background-position: -240px -1056px; }  /* Cheapcap */
+.cc-plant-23::after { background-position: -240px -1104px; }  /* Fool's bolete */
+.cc-plant-24::after { background-position: -240px -1152px; }  /* Doughshroom */
+.cc-plant-25::after { background-position: -240px -1200px; }  /* Wrinklegill */
+.cc-plant-26::after { background-position: -240px -1248px; }  /* White mildew */
+.cc-plant-27::after { background-position: -240px -1296px; }  /* Brown mold */
+.cc-plant-28::after { background-position: -240px -1344px; }  /* Green rot */
+.cc-plant-29::after { background-position: -240px -1392px; }  /* Meddleweed */
+.cc-plant-30::after { background-position: -240px -1440px; }  /* Shriekbulb */
+.cc-plant-31::after { background-position: -240px -1488px; }  /* Tidygrass */
+.cc-plant-32::after { background-position: -240px -1536px; }  /* Everdaisy */
+.cc-plant-33::after { background-position: -240px -1584px; }  /* Ichorpuff */
