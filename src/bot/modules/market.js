@@ -362,6 +362,80 @@ CookieCheater.modules.market = {
         } catch (e) {}
     },
 
+    // ========================================================================
+    // LOAN ANALYSIS (propose to user, never auto-take)
+    // ========================================================================
+    _analyzeLoan: function(M) {
+        if (!M.loans || !M.offices) return null;
+
+        var loans = [];
+        // Loan data from wiki
+        var loanDefs = [
+            { id: 1, name: "Modest Loan", boost: 0.50, boostDur: "2 hours", penalty: 0.75, penaltyDur: "4 hours", downpayment: 0.20, note: "Mediocre — 4h of -75% CPS penalty is brutal" },
+            { id: 2, name: "Pawnshop Loan", boost: 1.00, boostDur: "40 seconds", penalty: 0.90, penaltyDur: "40 minutes", downpayment: 0.40, note: "BEST for combos — +100% CPS for 40s, time it with Frenzy+Click Frenzy" },
+            { id: 3, name: "Retirement Loan", boost: 0.20, boostDur: "2 days", penalty: 0.20, penaltyDur: "5 days", downpayment: 0.50, note: "Safe passive play — +20% for 2 days, small -20% penalty after" },
+        ];
+
+        for (var i = 0; i < loanDefs.length; i++) {
+            var def = loanDefs[i];
+            // Check if loan slot is available (requires office level)
+            // Loan 1: office 2+, Loan 2: office 4+, Loan 3: office 5+
+            var minOffice = [0, 2, 4, 5][def.id] || 99;
+            var available = (M.officeLevel || 0) >= minOffice;
+
+            // Check if loan is already active
+            var active = false;
+            try {
+                var el = document.getElementById('bankLoan' + def.id);
+                if (el && el.style.display !== 'none') active = true;
+            } catch(e) {}
+
+            var cps = Game.cookiesPs;
+            var boostValue = cps * def.boost;
+            var downpaymentCost = Game.cookies * def.downpayment;
+
+            loans.push({
+                id: def.id,
+                name: def.name,
+                available: available && !active,
+                active: active,
+                boost: "+" + (def.boost * 100) + "% CPS",
+                boostValue: boostValue,
+                boostDur: def.boostDur,
+                penalty: "-" + (def.penalty * 100) + "% CPS",
+                penaltyDur: def.penaltyDur,
+                downpayment: (def.downpayment * 100) + "% of bank (" + this._fmt(downpaymentCost) + ")",
+                note: def.note,
+                recommendation: this._loanRecommendation(def, cps),
+            });
+        }
+
+        return loans;
+    },
+
+    _loanRecommendation: function(def, cps) {
+        // Pawnshop during active combo = strongly recommended
+        if (def.id === 2 && CookieCheater._comboActive) {
+            return { action: "TAKE NOW", reason: "Combo active! +100% CPS for 40s during combo = massive gains" };
+        }
+        // Retirement for passive play = moderate recommendation
+        if (def.id === 3) {
+            return { action: "Consider", reason: "+20% CPS for 2 days. Penalty is mild (-20% for 5 days). Good for overnight." };
+        }
+        // Modest = generally avoid
+        if (def.id === 1) {
+            return { action: "Avoid", reason: "-75% CPS for 4 hours is devastating. Only take if you need a short boost and can handle the penalty." };
+        }
+        return { action: "Wait", reason: "No active combo. Best to wait for Frenzy+Click Frenzy before taking Pawnshop." };
+    },
+
+    _fmt: function(n) {
+        if (n < 1e6) return Math.round(n).toLocaleString();
+        if (n < 1e9) return (n / 1e6).toFixed(1) + "M";
+        if (n < 1e12) return (n / 1e9).toFixed(1) + "B";
+        return (n / 1e12).toFixed(1) + "T";
+    },
+
     _exposeState: function(M, bankLevel, brokers, oh) {
         var goods = [];
         for (var i = 0; i < M.goodsById.length; i++) {
@@ -401,6 +475,7 @@ CookieCheater.modules.market = {
             profit: Math.round((M.profit || 0) * 100) / 100,
             officeLevel: M.officeLevel || 0,
             stats: this._stats,
+            loans: this._analyzeLoan(M),
         };
     },
 };

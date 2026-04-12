@@ -122,6 +122,23 @@ async def approve_lump_spend(request: Request):
     return {"status": result}
 
 
+@router.post("/market/loan")
+async def take_loan(request: Request):
+    """User approves taking a loan."""
+    data = await request.json()
+    loan_id = data.get("id", 1)
+    bridge = request.app.state.game_bridge
+    result = bridge.connection.evaluate_js(
+        f"""(function() {{
+            var M = Game.ObjectsById[5].minigame;
+            if (!M) return 'no market';
+            try {{ M.takeLoan({loan_id}); return 'ok'; }}
+            catch(e) {{ return e.message; }}
+        }})()"""
+    )
+    return {"status": result}
+
+
 @router.post("/lumps/skip")
 async def skip_lump_proposal(request: Request):
     """User dismisses the current lump proposal."""

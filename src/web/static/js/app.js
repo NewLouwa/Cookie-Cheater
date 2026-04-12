@@ -212,6 +212,9 @@ function updateDashboard(data) {
     // Sugar lump approval card
     updateLumpCard(data.lumpProposal);
 
+    // Loans
+    if (data.market && data.market.loans) updateLoans(data.market.loans);
+
     // Garden grid
     if (data.gardenInfo) updateGardenGrid(data.gardenInfo);
 
@@ -349,6 +352,41 @@ function initChart() {
             plugins: { legend: { display: false } },
             animation: false,
         }
+    });
+}
+
+function updateLoans(loans) {
+    const el = document.getElementById('market-loans');
+    if (!loans || loans.length === 0) { el.innerHTML = '<span class="dim">No loans available</span>'; return; }
+
+    el.innerHTML = loans.map(loan => {
+        const cls = loan.active ? 'active' : loan.available ? 'available' : 'locked';
+        const rec = loan.recommendation || {};
+        const recCls = (rec.action || '').toLowerCase().replace(' ', '-');
+        const btnHtml = loan.available && !loan.active
+            ? `<button class="loan-btn" onclick="takeLoan(${loan.id})">${rec.action === 'TAKE NOW' ? 'TAKE NOW!' : 'Take Loan'}</button>`
+            : loan.active ? '<span class="dim" style="font-size:0.72rem">Active</span>' : '';
+
+        return `<div class="loan-card ${cls}">
+            <div class="loan-name">${loan.name} ${loan.active ? '<span class="tag tag-green" style="font-size:0.6rem">ACTIVE</span>' : ''}</div>
+            <div class="loan-stats">
+                <div class="ls-row"><span class="ls-label">Boost:</span> <span class="ls-boost">${loan.boost} for ${loan.boostDur}</span></div>
+                <div class="ls-row"><span class="ls-label">Penalty:</span> <span class="ls-penalty">${loan.penalty} for ${loan.penaltyDur}</span></div>
+                <div class="ls-row"><span class="ls-label">Downpayment:</span> <span>${loan.downpayment}</span></div>
+            </div>
+            <div class="loan-note">${loan.note}</div>
+            <div class="loan-rec ${recCls}">${rec.action}: ${rec.reason}</div>
+            ${btnHtml}
+        </div>`;
+    }).join('');
+}
+
+async function takeLoan(id) {
+    if (!confirm('Take this loan? The downpayment will be deducted from your cookies.')) return;
+    await fetch('/api/market/loan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
     });
 }
 
