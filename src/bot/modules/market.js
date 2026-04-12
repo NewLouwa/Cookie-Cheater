@@ -62,6 +62,9 @@ CookieCheater.modules.market = {
         this._upgradeOffice(M);
         this._hireBrokers(M, brokers);
 
+        // Sync positions with game state (prevent drift from failed trades)
+        this._syncPositions(M);
+
         // Analyze + trade each good
         for (var i = 0; i < M.goodsById.length; i++) {
             var g = M.goodsById[i];
@@ -291,11 +294,13 @@ CookieCheater.modules.market = {
     // EXECUTION
     // ========================================================================
     _executeBuy: function(M, g, analysis, oh) {
+        // Use GAME stock, not bot position, to check real capacity
+        var gameStock = g.stock || 0;
         var maxStock = analysis.maxStock;
-        var space = maxStock - analysis.stock;
+        var space = maxStock - gameStock;
         if (space <= 0) return;
 
-        // Cookie Monster sizing: full capacity at floor/extreme, 50% at deep value
+        // Cookie Monster sizing
         var qty;
         if (analysis.score >= 40) qty = Math.min(space, maxStock);
         else if (analysis.score >= 30) qty = Math.min(space, Math.ceil(maxStock * 0.5));
@@ -308,13 +313,17 @@ CookieCheater.modules.market = {
         }
         if (cost > Game.cookies || qty <= 0) return;
 
+        var stockBefore = g.stock;
         M.buyGood(g.id, qty);
+        var stockAfter = g.stock;
+        var actualBought = stockAfter - stockBefore;
 
-        // Track position using RAW price (not including overhead)
-        // Overhead will be calculated in _netProfit using broker count
+        // Only track what was ACTUALLY bought (game may cap at maxStock)
+        if (actualBought <= 0) return;
+
         if (!this._positions[g.id]) this._positions[g.id] = { qty: 0, totalCost: 0, avgPrice: 0, entryMode: analysis.mode };
-        this._positions[g.id].qty += qty;
-        this._positions[g.id].totalCost += analysis.val * qty; // RAW price, no overhead
+        this._positions[g.id].qty = stockAfter; // Sync with game state
+        this._positions[g.id].totalCost += analysis.val * actualBought;
         this._positions[g.id].avgPrice = this._positions[g.id].totalCost / this._positions[g.id].qty;
 
         this._stats.totalTrades++;
@@ -342,7 +351,11 @@ CookieCheater.modules.market = {
             if (net < 0 && analysis.score > -25) return; // Don't sell at a loss unless stop-loss
         }
 
+        var stockBefore = g.stock;
         M.sellGood(g.id, stock);
+        var actualSold = stockBefore - g.stock;
+        if (actualSold <= 0) return;
+        stock = actualSold; // Use actual amount sold
 
         // Calculate P/L
         var tradeNet = 0, tradePnl = 0;
@@ -417,6 +430,27 @@ CookieCheater.modules.market = {
     // ========================================================================
     // INFRASTRUCTURE
     // ========================================================================
+    _syncPositions: function(M) {
+        // Sync bot position tracking with actual game stock counts
+        // Fixes drift from failed buyGood/sellGood calls
+        for (var i = 0; i < M.goodsById.length; i++) {
+            var g = M.goodsById[i];
+            var gameStock = g.stock || 0;
+            var pos = this._positions[g.id];
+
+            if (pos && gameStock === 0) {
+                // Game has no stock but bot thinks we do — clear
+                delete this._positions[g.id];
+            } else if (pos && pos.qty !== gameStock) {
+                // Mismatch — sync qty to game
+                pos.qty = gameStock;
+                if (gameStock > 0 && pos.totalCost > 0) {
+                    pos.avgPrice = pos.totalCost / gameStock;
+                }
+            }
+        }
+    },
+
     _rebuildPositions: function(M) {
         for (var i = 0; i < M.goodsById.length; i++) {
             var g = M.goodsById[i];
