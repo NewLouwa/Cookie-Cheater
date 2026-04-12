@@ -224,9 +224,14 @@ CookieCheater.modules.market = {
 
         // === OVERHEAD DRAG ===
         // With high overhead, only extreme bargains are worth buying
+        // BUT: floor recovery (price < $5) is game-guaranteed profit — NEVER suppress
         if (stock === 0 && oh > 0.10 && score > 0) {
             var hurdlePct = Math.round(this._overheadHurdle(brokers) * 100);
-            if (score < 35) {
+            if (recovery > 0) {
+                // Floor recovery: game adds (5-price)/2 per tick — GUARANTEED upside
+                // Don't suppress, even with high overhead
+                reasons.push("High overhead " + (oh * 100).toFixed(1) + "% BUT floor recovery active (+$" + recovery.toFixed(1) + "/tick guaranteed)");
+            } else if (score < 35) {
                 score = Math.floor(score * 0.4);
                 reasons.push("High overhead " + (oh * 100).toFixed(1) + "% (need +" + hurdlePct + "% to break even) — suppressed");
             } else {
@@ -248,7 +253,9 @@ CookieCheater.modules.market = {
         // With 13% overhead you need ~30% price rise to break even
         // Only buy when the signal is MUCH stronger than the overhead hurdle
         var hurdle = this._overheadHurdle(Game.ObjectsById[5].minigame ? (Game.ObjectsById[5].minigame.brokers || 0) : 0);
-        var buyThreshold = oh > 0.10 ? 35 : oh > 0.05 ? 30 : 25; // Stricter with high overhead
+        var buyThreshold = oh > 0.10 ? 35 : oh > 0.05 ? 30 : 25;
+        // Floor recovery stocks bypass the high threshold — guaranteed profit
+        if (recovery > 0) buyThreshold = Math.min(buyThreshold, 25);
 
         if (stock > 0 && score < -15) action = "sell";
         else if (stock === 0 && score > buyThreshold) action = "buy";
