@@ -451,6 +451,35 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle:hover { border-color: var(--dim); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
+/* Minigame common */
+.mg-objective {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.7rem;
+    background: rgba(96, 165, 250, 0.05);
+    border-left: 3px solid var(--blue);
+    border-radius: 0.2rem;
+}
+.mg-objective .gs-text { font-size: 0.85rem; }
+.mg-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+.mg-stat {
+    background: var(--accent2);
+    padding: 0.4rem 0.7rem;
+    border-radius: 0.3rem;
+    font-size: 0.82rem;
+}
+.mg-stat .mg-label { color: var(--dim); font-size: 0.7rem; display: block; }
+.mg-stat .mg-value { font-weight: 700; }
+.mg-section { margin-bottom: 0.6rem; }
+
+.mini-table { font-size: 0.78rem; }
+.mini-table th { font-size: 0.62rem; }
+.mini-table td { padding: 0.25rem 0.4rem; }
+
 /* Garden grid */
 .garden-info-row { display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.78rem; }
 .garden-grid {

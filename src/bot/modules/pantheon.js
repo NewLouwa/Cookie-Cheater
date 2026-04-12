@@ -33,6 +33,9 @@ CookieCheater.modules.pantheon = {
         // During click combo: swap Godzamok into Diamond for massive click boost
         var comboActive = CookieCheater._comboActive && CookieCheater._comboScore > 100;
 
+        // Expose state for dashboard
+        this._exposeState(M);
+
         if (comboActive && !this._godzamokSlotted) {
             this._slotGodzamok(M);
         } else if (!comboActive && this._godzamokSlotted) {
@@ -117,6 +120,26 @@ CookieCheater.modules.pantheon = {
 
         this._godzamokSlotted = false;
         this._lastSwapTime = Date.now();
+    },
+
+    _exposeState: function(M) {
+        var slots = ["Empty", "Empty", "Empty"];
+        var slotNames = ["Diamond", "Ruby", "Jade"];
+        try {
+            for (var i = 0; i < 3; i++) {
+                for (var key in M.gods) {
+                    var g = M.gods[key];
+                    if (g.slot === i) { slots[i] = g.name; break; }
+                }
+            }
+        } catch(e) {}
+
+        CookieCheater._pantheonInfo = {
+            slots: slots.map(function(name, i) { return { slot: slotNames[i], spirit: name }; }),
+            godzamokActive: this._godzamokSlotted,
+            templeLevel: Game.ObjectsById[6] ? (Game.ObjectsById[6].level || 0) : 0,
+            mode: this._godzamokSlotted ? "combo" : "passive",
+        };
     },
 
     _findGod: function(M, key) {

@@ -223,12 +223,63 @@ function updateDashboard(data) {
         document.getElementById('garden-phase').textContent = data.gardenPhase;
     }
     if (data.grimoire) {
+        const gr = data.grimoire;
         document.getElementById('grimoire-status').textContent =
-            data.grimoire.magic + '/' + data.grimoire.maxMagic + ' (' + data.grimoire.pct + '%)';
+            gr.magic + '/' + gr.maxMagic + ' (' + gr.pct + '%)';
+
+        // Grimoire tab detail
+        const grimStats = document.getElementById('grim-stats');
+        if (grimStats) {
+            const barColor = gr.pct >= 90 ? '#4ade80' : gr.pct >= 50 ? '#fbbf24' : '#60a5fa';
+            grimStats.innerHTML = `
+                <div class="mg-stat">
+                    <span class="mg-label">Magic</span>
+                    <span class="mg-value">${gr.magic} / ${gr.maxMagic}</span>
+                    <div style="width:100px;height:6px;background:var(--bg);border-radius:3px;margin-top:3px">
+                        <div style="width:${gr.pct}%;height:100%;background:${barColor};border-radius:3px;transition:width 0.3s"></div>
+                    </div>
+                </div>
+                <div class="mg-stat">
+                    <span class="mg-label">Towers</span>
+                    <span class="mg-value">${gr.towerCount}</span>
+                </div>
+                <div class="mg-stat">
+                    <span class="mg-label">Tower Level</span>
+                    <span class="mg-value">${gr.towerLevel}</span>
+                </div>
+                <div class="mg-stat">
+                    <span class="mg-label">Status</span>
+                    <span class="mg-value" style="color:${gr.pct >= 90 ? '#4ade80' : '#fbbf24'}">${gr.pct >= 90 ? 'Ready to cast!' : 'Regenerating...'}</span>
+                </div>
+            `;
+        }
     }
     if (data.market) {
         document.getElementById('market-status').textContent =
             'OH:' + data.market.overhead + '% Bkr:' + data.market.brokers + ' Ofc:' + data.market.officeLevel;
+    }
+
+    // Pantheon tab
+    if (data.pantheonInfo) {
+        const pi = data.pantheonInfo;
+        const panthStats = document.getElementById('panth-stats');
+        if (panthStats) {
+            panthStats.innerHTML = pi.slots.map(s =>
+                `<div class="mg-stat">
+                    <span class="mg-label">${s.slot}</span>
+                    <span class="mg-value" style="color:${s.spirit === 'Empty' ? 'var(--dim)' : 'var(--text)'}">${s.spirit}</span>
+                </div>`
+            ).join('') + `
+                <div class="mg-stat">
+                    <span class="mg-label">Mode</span>
+                    <span class="mg-value" style="color:${pi.godzamokActive ? 'var(--yellow)' : 'var(--green)'}">${pi.godzamokActive ? 'COMBO (Godzamok)' : 'Passive'}</span>
+                </div>
+                <div class="mg-stat">
+                    <span class="mg-label">Temple Level</span>
+                    <span class="mg-value">${pi.templeLevel}</span>
+                </div>
+            `;
+        }
     }
 
     // CPS chart

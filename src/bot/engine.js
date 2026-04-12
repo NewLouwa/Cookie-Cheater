@@ -240,6 +240,7 @@ var CookieCheater = window.CookieCheater = {
             grimoire: CookieCheater._grimoire || null,
             gardenPhase: CookieCheater.modules.garden ? CookieCheater.modules.garden._phase : null,
             gardenInfo: CookieCheater._gardenInfo || null,
+            pantheonInfo: CookieCheater._pantheonInfo || null,
         };
     },
 
