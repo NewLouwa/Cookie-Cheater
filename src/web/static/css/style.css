@@ -318,6 +318,47 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .toggle:hover { border-color: var(--dim); }
 .toggle input { accent-color: var(--accent); cursor: pointer; width: 14px; height: 14px; }
 
+/* Sugar Lump approval card */
+.lump-card { border-color: var(--yellow); }
+.lump-header { font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--dim); }
+.lump-options { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem; }
+
+.lump-option {
+    background: var(--accent2);
+    border-radius: 0.3rem;
+    padding: 0.5rem 0.7rem;
+    border-left: 3px solid var(--yellow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.lump-option .lump-rank { font-weight: 700; color: var(--yellow); min-width: 24px; }
+.lump-option .lump-detail { flex: 1; }
+.lump-option .lump-name { font-weight: 600; font-size: 0.85rem; }
+.lump-option .lump-why { font-size: 0.72rem; color: var(--dim); display: block; margin-top: 0.1rem; }
+.lump-option .lump-approve {
+    background: var(--yellow);
+    color: #000;
+    border: none;
+    padding: 0.3rem 0.7rem;
+    border-radius: 0.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+.lump-option .lump-approve:hover { background: #fcd34d; }
+
+.btn-skip {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--dim);
+    padding: 0.3rem 0.7rem;
+    border-radius: 0.2rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+.btn-skip:hover { color: var(--text); border-color: var(--text); }
+
 /* Strategy panel */
 .strategy-card { grid-column: span 2; }
 

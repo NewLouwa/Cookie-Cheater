@@ -37,7 +37,10 @@ CookieCheater.modules.market = {
         var overhead = 0.2 * Math.pow(0.95, brokers);
         var bankLevel = bank.level || 1;
 
-        // First: hire brokers if affordable (reduces overhead significantly)
+        // Upgrade office (more warehouse space, loan slots)
+        this._upgradeOffice(M);
+
+        // Hire brokers (reduces overhead)
         this._hireBrokers(M, overhead);
 
         // Analyze each good with full hidden data
@@ -360,13 +363,34 @@ CookieCheater.modules.market = {
         );
     },
 
+    _upgradeOffice: function(M) {
+        // Auto-upgrade office (costs cookies, not lumps)
+        if (!CookieCheater.throttle("market_office", 120000)) return;
+        if (!M.officeLevel || M.officeLevel >= 5) return;
+
+        try {
+            // Office upgrade button
+            var cost = M.offices[M.officeLevel + 1] ? M.offices[M.officeLevel + 1].cost : null;
+            if (cost && Game.cookies >= cost && cost < Game.cookies * 0.05) {
+                M.upgradeOffice();
+                CookieCheater.justify("market", "OFFICE_UPGRADE",
+                    "Office level " + (M.officeLevel) + " — more warehouse space + loan slots");
+            }
+        } catch(e) {}
+    },
+
     _hireBrokers: function(M, currentOverhead) {
         // Brokers reduce overhead: 20% * 0.95^brokers
-        // Each broker costs 1200 cookies per CPS second
-        if (!CookieCheater.throttle("market_brokers", 60000)) return; // Check every 60s
+        // Cost: $1200. Max: floor(grandmaCount/10) + grandmaLevel
+        if (!CookieCheater.throttle("market_brokers", 60000)) return;
 
         var brokers = M.brokers || 0;
-        if (brokers >= 100) return; // Diminishing returns past ~100
+        // Broker cap from wiki
+        var grandmas = Game.ObjectsById[1] ? Game.ObjectsById[1].amount : 0;
+        var grandmaLevel = Game.ObjectsById[1] ? (Game.ObjectsById[1].level || 0) : 0;
+        var maxBrokers = Math.floor(grandmas / 10) + grandmaLevel;
+        if (brokers >= maxBrokers) return;
+        if (brokers >= 100) return; // Hard cap for sanity
         if (currentOverhead < 0.02) return; // Already under 2%
 
         // Broker cost: Game.ObjectsById[5].minigame.brokersPrice

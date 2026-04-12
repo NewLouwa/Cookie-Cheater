@@ -466,6 +466,147 @@ CookieCheater.KB = {
     // ========================================================================
     // PRESTIGE / HEAVENLY UPGRADE PRIORITY
     // ========================================================================
+    // ========================================================================
+    // GARDEN KNOWLEDGE
+    // ========================================================================
+    garden: {
+        // Soils: id, name, farms needed, tick speed (minutes), weed mult, efficiency mult, special
+        soils: {
+            dirt:       { id: 0, tickMin: 5,  weedMult: 1,   effMult: 1,    mutMult: 1, note: "Default" },
+            fertilizer: { id: 1, tickMin: 3,  weedMult: 1.2, effMult: 0.75, mutMult: 1, note: "Faster growth, less efficient", farmsNeeded: 50 },
+            clay:       { id: 2, tickMin: 15, weedMult: 1,   effMult: 1.25, mutMult: 1, note: "Slow growth, more efficient", farmsNeeded: 100 },
+            pebbles:    { id: 3, tickMin: 5,  weedMult: 0.1, effMult: 0.25, mutMult: 1, note: "35% auto-harvest on expire", farmsNeeded: 200 },
+            woodChips:  { id: 4, tickMin: 5,  weedMult: 0.1, effMult: 0.25, mutMult: 3, note: "3x mutation rate!", farmsNeeded: 300 },
+        },
+
+        // Farm level -> grid size [cols, rows]
+        plotSizes: {
+            1: [2,2], 2: [3,2], 3: [3,3], 4: [4,3], 5: [4,4],
+            6: [5,4], 7: [5,5], 8: [6,5], 9: [6,6]
+        },
+
+        // Mutation recipes: [parent1, parent2, chance]
+        // Key mutations to pursue in order
+        mutationPath: [
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Thumbcorn", chance: 0.05 },
+            { parents: ["Baker's wheat", "Thumbcorn"], child: "Cronerice", chance: 0.01 },
+            { parents: ["Cronerice", "Thumbcorn"], child: "Gildmillet", chance: 0.03 },
+            { parents: ["Baker's wheat", "Gildmillet"], child: "Ordinary clover", chance: 0.03 },
+            { parents: ["Ordinary clover", "Gildmillet"], child: "Shimmerlily", chance: 0.02 },
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Bakeberry", chance: 0.001 },
+            { parents: ["Baker's wheat", "Brown mold"], child: "Chocoroot", chance: 0.10 },
+            { parents: ["Chocoroot", "White mildew"], child: "White chocoroot", chance: 0.10 },
+            { parents: ["Shimmerlily", "White chocoroot"], child: "Whiskerbloom", chance: 0.01 },
+            { parents: ["Shimmerlily", "Cronerice"], child: "Elderwort", chance: 0.01 },
+            { parents: ["Bakeberry", "Chocoroot"], child: "Queenbeet", chance: 0.01 },
+            { parents: ["Queenbeet", "Queenbeet"], child: "Duketater", chance: 0.001 },
+        ],
+
+        // Plants to harvest for permanent upgrades (name -> upgrade drop chance)
+        upgradeDrops: {
+            "Baker's wheat": { upgrade: "Wheat slims", chance: 0.001, effect: "+1% CPS" },
+            "Bakeberry": { upgrade: "Bakeberry cookies", chance: 0.015, effect: "+2% CPS" },
+            "Elderwort": { upgrade: "Elderwort biscuits", chance: 0.01, effect: "+2% CPS, +2% grandma CPS" },
+            "Duketater": { upgrade: "Duketater cookies", chance: 0.005, effect: "+10% CPS" },
+            "Green rot": { upgrade: "Green yeast digestives", chance: 0.005, effect: "+1% GC gains/freq/dur, +3% drops" },
+            "Drowsyfern": { upgrade: "Fern tea", chance: 0.01, effect: "+3% offline CPS" },
+            "Ichorpuff": { upgrade: "Ichor syrup", chance: 0.005, effect: "+7% offline CPS, lumps mature 7min sooner" },
+        },
+
+        // High-value plants to farm once unlocked
+        farmingPriority: ["Bakeberry", "Queenbeet", "Duketater", "Baker's wheat"],
+    },
+
+    // ========================================================================
+    // GRIMOIRE KNOWLEDGE
+    // ========================================================================
+    grimoire: {
+        // Max magic formula: floor(4 + T^0.6 + 15*ln(1 + T + 10*(L-1)/15))
+        // T = wizard tower count, L = wizard tower level
+        maxMagic: function(towers, level) {
+            return Math.floor(4 + Math.pow(towers, 0.6) + 15 * Math.log(1 + towers + 10 * Math.max(0, level - 1) / 15));
+        },
+
+        spells: {
+            ftHoF: { name: "Force the Hand of Fate", costPct: 0.6, costBase: 10,
+                     note: "Best during Frenzy. Summons GC (Click Frenzy, Building Special, Lucky, etc.)" },
+            conjure: { name: "Conjure Baked Goods", costPct: 0.4, costBase: 2,
+                       note: "Free ~30min CPS. Cast when idle (no buffs)." },
+            stretch: { name: "Stretch Time", costPct: 0.2, costBase: 8,
+                       note: "Extend active buffs by 10%. Good during combos." },
+            edifice: { name: "Spontaneous Edifice", costPct: 0.75, costBase: 20,
+                       note: "Free building. Expensive magic cost." },
+            haggler: { name: "Haggler's Charm", costPct: 0.1, costBase: 10,
+                       note: "Upgrades 2% cheaper for 1 min." },
+            pixies: { name: "Summon Crafty Pixies", costPct: 0.2, costBase: 10,
+                      note: "Buildings 2% cheaper for 1 min." },
+            gambler: { name: "Gambler's Fever Dream", costPct: 0.05, costBase: 3,
+                       note: "Random spell at half cost, double backfire. Risky." },
+            resurrect: { name: "Resurrect Abomination", costPct: 0.1, costBase: 20,
+                         note: "Summon wrinkler." },
+            diminish: { name: "Diminish Ineptitude", costPct: 0.2, costBase: 5,
+                        note: "10x less backfire for 5 min." },
+        },
+    },
+
+    // ========================================================================
+    // SUGAR LUMP PRIORITIES
+    // ========================================================================
+    sugarLumps: {
+        reserve: 100, // Keep 100 for Sugar Baking (+1% CPS per lump up to 100)
+
+        // Minigame unlock: building ID -> { minigame name, why it matters }
+        minigameUnlocks: {
+            2: { name: "Garden", game: "Farm", why: "Unlock seed mutations, permanent upgrade drops, sugar lump farming via Juicy Queenbeet" },
+            5: { name: "Stock Market", game: "Bank", why: "Unlock stock trading with hidden mode data for profit" },
+            6: { name: "Pantheon", game: "Temple", why: "Unlock spirit slots for Mokalsium (+10% milk) and Godzamok (combo boost)" },
+            7: { name: "Grimoire", game: "Wizard Tower", why: "Unlock Force the Hand of Fate for golden cookie combos" },
+        },
+
+        // Level-up benefits per building
+        levelBenefits: {
+            2: function(currentLevel) { // Farm
+                var sizes = {1:[2,2],2:[3,2],3:[3,3],4:[4,3],5:[4,4],6:[5,4],7:[5,5],8:[6,5],9:[6,6]};
+                var cur = sizes[currentLevel] || [6,6];
+                var next = sizes[currentLevel+1] || [6,6];
+                var plotsNow = cur[0]*cur[1], plotsNext = next[0]*next[1];
+                return "Garden " + plotsNow + " -> " + plotsNext + " plots (+" + (plotsNext-plotsNow) + ")";
+            },
+            7: function(currentLevel) { // Wizard Tower
+                var towers = Game.ObjectsById[7] ? Game.ObjectsById[7].amount : 0;
+                var magNow = Math.floor(4 + Math.pow(towers,0.6) + 15*Math.log(1+towers+10*Math.max(0,currentLevel-1)/15));
+                var magNext = Math.floor(4 + Math.pow(towers,0.6) + 15*Math.log(1+towers+10*Math.max(0,currentLevel)/15));
+                return "Max magic " + magNow + " -> " + magNext + " (+" + (magNext-magNow) + ")";
+            },
+            5: function(currentLevel) { // Bank
+                var capNow = 100 + 3*Math.max(0, currentLevel-1);
+                var capNext = 100 + 3*Math.max(0, currentLevel);
+                return "Market cap $" + capNow + " -> $" + capNext + ", resting values +1";
+            },
+            6: function(currentLevel) { // Temple
+                return "Spirit slot power increased (Diamond/Ruby/Jade bonuses scale with level)";
+            },
+        },
+
+        // Score a potential lump spend. Higher = spend first.
+        scoreLevelUp: function(buildingId, currentLevel) {
+            // Minigame unlock = top priority
+            if (currentLevel === 0 && CookieCheater.KB.sugarLumps.minigameUnlocks[buildingId]) {
+                return 1000;
+            }
+            // Farm plots are very valuable (more mutations, more farming)
+            if (buildingId === 2 && currentLevel < 9) return 80 - currentLevel * 5;
+            // Wizard Tower magic (diminishing returns)
+            if (buildingId === 7 && currentLevel < 10) return 50 - currentLevel * 3;
+            // Bank market cap (marginal)
+            if (buildingId === 5 && currentLevel < 10) return 20 - currentLevel * 2;
+            // Temple (marginal)
+            if (buildingId === 6 && currentLevel < 10) return 15 - currentLevel * 2;
+            // Any other building (synergy achievements only)
+            return 5 - currentLevel;
+        },
+    },
+
     heavenlyPriority: [
         "Legacy",                          // Enables prestige CPS multiplier
         "Heavenly cookies",                // Prestige applies to CPS

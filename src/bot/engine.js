@@ -236,6 +236,9 @@ var CookieCheater = window.CookieCheater = {
             comboScore: CookieCheater._comboScore || 1,
             purchaserPhase: CookieCheater.modules.purchaser ? CookieCheater.modules.purchaser.currentPhase : "unknown",
             strategy: CookieCheater.strategy || null,
+            lumpProposal: CookieCheater._lumpProposal || null,
+            grimoire: CookieCheater._grimoire || null,
+            gardenPhase: CookieCheater.modules.garden ? CookieCheater.modules.garden._phase : null,
         };
     },
 

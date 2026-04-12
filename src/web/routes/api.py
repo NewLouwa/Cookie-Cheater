@@ -108,3 +108,23 @@ async def reinject_bot(request: Request):
     js_code = assemble_bot(service.config.to_dict())
     bridge.inject_bot(js_code)
     return {"status": "reinjected"}
+
+
+@router.post("/lumps/approve")
+async def approve_lump_spend(request: Request):
+    """User approves a sugar lump spending option."""
+    data = await request.json()
+    choice = data.get("choice", 0)
+    bridge = request.app.state.game_bridge
+    result = bridge.connection.evaluate_js(
+        f"CookieCheater.modules.sugarLumps.executeApproval({choice}) ? 'ok' : 'failed'"
+    )
+    return {"status": result}
+
+
+@router.post("/lumps/skip")
+async def skip_lump_proposal(request: Request):
+    """User dismisses the current lump proposal."""
+    bridge = request.app.state.game_bridge
+    bridge.connection.evaluate_js("CookieCheater._lumpProposal = null; 'skipped'")
+    return {"status": "skipped"}

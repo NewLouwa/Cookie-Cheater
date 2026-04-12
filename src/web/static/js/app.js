@@ -175,6 +175,22 @@ function updateDashboard(data) {
     // Strategy panel
     if (data.strategy) updateStrategy(data.strategy);
 
+    // Sugar lump approval card
+    updateLumpCard(data.lumpProposal);
+
+    // Minigame status
+    if (data.gardenPhase) {
+        document.getElementById('garden-phase').textContent = data.gardenPhase;
+    }
+    if (data.grimoire) {
+        document.getElementById('grimoire-status').textContent =
+            data.grimoire.magic + '/' + data.grimoire.maxMagic + ' (' + data.grimoire.pct + '%)';
+    }
+    if (data.market) {
+        document.getElementById('market-status').textContent =
+            'OH:' + data.market.overhead + '% Bkr:' + data.market.brokers + ' Ofc:' + data.market.officeLevel;
+    }
+
     // CPS chart
     updateChart(data.cps);
 }
@@ -297,6 +313,44 @@ function initChart() {
             animation: false,
         }
     });
+}
+
+function updateLumpCard(proposal) {
+    const card = document.getElementById('lump-card');
+    if (!proposal || !proposal.options || proposal.options.length === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    card.style.display = '';
+    document.getElementById('lump-header').innerHTML =
+        `<strong>${proposal.lumps}</strong> lumps (${proposal.reserve} reserved, <strong>${proposal.available}</strong> available)`;
+    document.getElementById('lump-options').innerHTML = proposal.options.map((opt, i) =>
+        `<div class="lump-option">
+            <span class="lump-rank">#${i+1}</span>
+            <div class="lump-detail">
+                <span class="lump-name">${opt.buildingName} lv${opt.currentLevel} → ${opt.targetLevel}</span>
+                <span class="lump-why">${opt.why}</span>
+            </div>
+            <button class="lump-approve" onclick="approveLump(${i})">Approve</button>
+        </div>`
+    ).join('');
+}
+
+async function approveLump(index) {
+    const res = await fetch('/api/lumps/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice: index })
+    });
+    const data = await res.json();
+    if (data.status === 'ok') {
+        document.getElementById('lump-card').style.display = 'none';
+    }
+}
+
+async function skipLumps() {
+    await fetch('/api/lumps/skip', { method: 'POST' });
+    document.getElementById('lump-card').style.display = 'none';
 }
 
 // === API calls ===
