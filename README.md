@@ -12,7 +12,7 @@ CookieCheater injects a 67KB JavaScript bot into Cookie Clicker's game loop (~30
 | **Purchaser** | Buys buildings & upgrades using payback period optimization. Lucky banking (keeps 6000x CPS reserve). Early-game bootstrap for empty bakeries |
 | **Shimmer** | Pops golden cookies and reindeer within ~33ms of spawning |
 | **Market** | **Cheats** - reads hidden mode/duration/delta data. Score-based trading, never sells at a loss, auto-hires brokers |
-| **Wrinklers** | Lets all slots fill, pops in bulk for 1.1x return. Instant-pops shiny wrinklers (3.3x, 1/10000 chance) |
+| **Wrinklers** | Lets all slots fill, pops normals in bulk for 1.1x return. **Protects** shiny wrinklers (3.3x return, 1/10000 spawn) - never pops them |
 | **Grandmapocalypse** | Elder Pledge/Covenant management (configurable strategy) |
 | **Dragon** | Trains Krumblor, sets Radiant Appetite (x2 CPS) + Breath of Milk auras |
 | **Seasons** | Cycles Christmas/Halloween/Easter/Valentine to collect all seasonal upgrades |

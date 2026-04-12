@@ -35,13 +35,8 @@ CookieCheater.modules.wrinklers = {
             }
         }
 
-        // ALWAYS pop shiny wrinklers immediately (3.3x return + achievement)
-        if (shinyIdx >= 0) {
-            Game.wrinklers[shinyIdx].hp = 0;
-            CookieCheater.log("wrinklers", "POP_SHINY",
-                "Popped SHINY wrinkler! (3.3x payout)");
-            return;
-        }
+        // NEVER pop shiny wrinklers in bulk - they return 3.3x instead of 1.1x
+        // Keep them feeding as long as possible, they're 3x more valuable
 
         if (feeding.length === 0) return;
 
@@ -54,18 +49,27 @@ CookieCheater.modules.wrinklers = {
         var timeSinceLastPop = Date.now() - this._lastPopTime;
 
         if (feeding.length >= maxSlots && timeSinceLastPop >= minFeedTime) {
-            // Calculate expected payout for logging
-            var expectedPayout = totalSucked * 1.1; // 1.1x return per wrinkler
+            // Pop normal wrinklers only - keep shiny ones (3.3x return)
+            var popped = 0;
+            var expectedPayout = 0;
 
             for (var i = 0; i < feeding.length; i++) {
-                Game.wrinklers[feeding[i]].hp = 0;
+                var w = Game.wrinklers[feeding[i]];
+                if (w.type === 1) {
+                    // Shiny wrinkler - KEEP IT, it's 3x more valuable
+                    continue;
+                }
+                expectedPayout += w.sucpicd * 1.1;
+                w.hp = 0;
+                popped++;
             }
 
+            if (popped === 0) return; // All were shiny, nothing to pop
             this._lastPopTime = Date.now();
-            CookieCheater.log("wrinklers", "POP_ALL",
-                feeding.length + " wrinklers popped | " +
-                "sucked=" + CookieCheater.modules.purchaser._fmt(totalSucked) +
-                " -> payout~" + CookieCheater.modules.purchaser._fmt(expectedPayout));
+            var shinyKept = feeding.length - popped;
+            CookieCheater.log("wrinklers", "POP",
+                popped + " popped" + (shinyKept > 0 ? " (kept " + shinyKept + " shiny)" : "") +
+                " | payout~" + CookieCheater.modules.purchaser._fmt(expectedPayout));
         }
     }
 };
