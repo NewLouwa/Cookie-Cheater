@@ -1,7 +1,10 @@
 """REST API routes for game state, config, and stats."""
 
 from fastapi import APIRouter, Request
-from ...utils.database import get_recent_snapshots, get_recent_actions
+from ...utils.database import (
+    get_recent_snapshots, get_recent_actions,
+    get_market_price_history, get_market_trades, get_market_pnl_history
+)
 
 router = APIRouter()
 
@@ -120,6 +123,33 @@ async def approve_lump_spend(request: Request):
         f"CookieCheater.modules.sugarLumps.executeApproval({choice}) ? 'ok' : 'failed'"
     )
     return {"status": result}
+
+
+@router.get("/market/history")
+async def market_history(request: Request):
+    """Get market price history from DB."""
+    db_path = request.app.state.db_path
+    good_id = request.query_params.get("good_id")
+    limit = int(request.query_params.get("limit", 500))
+    if good_id is not None:
+        good_id = int(good_id)
+    return get_market_price_history(db_path, good_id, limit)
+
+
+@router.get("/market/trades")
+async def market_trades(request: Request):
+    """Get market trade history from DB."""
+    db_path = request.app.state.db_path
+    limit = int(request.query_params.get("limit", 100))
+    return get_market_trades(db_path, limit)
+
+
+@router.get("/market/pnl")
+async def market_pnl(request: Request):
+    """Get market P/L history from DB."""
+    db_path = request.app.state.db_path
+    limit = int(request.query_params.get("limit", 200))
+    return get_market_pnl_history(db_path, limit)
 
 
 @router.post("/market/loan")

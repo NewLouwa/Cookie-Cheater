@@ -189,7 +189,7 @@ function updateDashboard(data) {
 
                 return `<tr>
                     <td>${badge}</td>
-                    <td title="${g.name}"><strong>${g.symbol}</strong></td>
+                    <td title="${g.name}"><span class="good-icon good-icon-${g.id}"></span><strong>${g.symbol}</strong></td>
                     <td>$${g.val}</td>
                     <td class="dim">$${g.restingVal}</td>
                     <td class="${ratioClass}">${g.ratio}%</td>

@@ -55,10 +55,17 @@ header h1 { font-size: 1.25rem; color: var(--accent); letter-spacing: 0.05em; }
     font-weight: 600;
 }
 .tag-red { background: var(--red); color: #000; }
-.tag-green { background: var(--green); color: #000; }
+.tag-green { background: var(--green); color: #000; box-shadow: 0 0 8px rgba(74,222,128,0.4); }
 .tag-yellow { background: var(--yellow); color: #000; }
 .tag-blue { background: var(--blue); color: #000; }
 .tag-dim { background: var(--accent2); color: var(--dim); }
+
+/* Connection status glow */
+.tag-red { animation: pulse-red 1.5s infinite; }
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
 
 /* Top metrics bar */
 .top-bar {
@@ -262,7 +269,15 @@ th {
     text-transform: uppercase;
     font-size: 0.65rem;
     letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--card-bg);
 }
+
+/* Table hover */
+tbody tr { transition: background 0.15s; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
 
 /* Cards spanning */
 .buildings-card, .market-card { grid-column: span 2; }

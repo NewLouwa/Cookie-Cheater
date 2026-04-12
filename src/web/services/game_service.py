@@ -10,7 +10,7 @@ from fastapi import WebSocket
 
 from ...strategy.ascension import should_ascend
 from ...strategy.config import BotConfig
-from ...utils.database import setup_tables, save_snapshot
+from ...utils.database import setup_tables, save_snapshot, save_market_prices, save_market_pnl, save_bot_actions
 
 
 class GameService:
@@ -45,10 +45,17 @@ class GameService:
                 if state:
                     self.latest_state = state
 
-                    # Save snapshot every 30 seconds
+                    # Save snapshots every 30 seconds
                     now = time.time()
                     if now - self._last_snapshot_time >= 30:
                         save_snapshot(self.db_path, state)
+                        # Save market prices to DB (deduped)
+                        market = state.get("market")
+                        if market and market.get("goods"):
+                            save_market_prices(self.db_path, market)
+                            # Save market P/L snapshot
+                            if market.get("stats"):
+                                save_market_pnl(self.db_path, market["stats"])
                         self._last_snapshot_time = now
 
                     # Check strategic decisions
