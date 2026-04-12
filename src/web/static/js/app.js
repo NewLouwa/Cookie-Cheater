@@ -140,36 +140,70 @@ function updateDashboard(data) {
 
     // Stock Market
     if (data.market) {
+        const m = data.market;
         const mInfo = document.getElementById('market-info');
         mInfo.innerHTML = `
-            <span><span class="mi-label">Brokers:</span> <span class="mi-value">${data.market.brokers}</span></span>
-            <span><span class="mi-label">OH:</span> <span class="mi-value">${data.market.overhead}%</span></span>
-            <span><span class="mi-label">Profit:</span> <span class="mi-value ${data.market.profit >= 0 ? 'mode-rise' : 'mode-fall'}">$${data.market.profit}</span></span>
-            <span><span class="mi-label">Office:</span> <span class="mi-value">${data.market.officeLevel}</span></span>
+            <span><span class="mi-label">Brokers:</span> <span class="mi-value">${m.brokers}</span></span>
+            <span><span class="mi-label">Overhead:</span> <span class="mi-value">${m.overhead}%</span></span>
+            <span><span class="mi-label">Hurdle:</span> <span class="mi-value">${m.hurdle || '?'}%</span></span>
+            <span><span class="mi-label">Office:</span> <span class="mi-value">${m.officeLevel}</span></span>
+            <span><span class="mi-label">Profit:</span> <span class="mi-value ${m.profit >= 0 ? 'mode-rise' : 'mode-fall'}">$${m.profit}</span></span>
         `;
 
+        // Stats row
+        const statsEl = document.getElementById('market-stats');
+        if (m.stats) {
+            const s = m.stats;
+            const wr = s.totalTrades > 0 ? Math.round(s.wins / s.totalTrades * 100) : 0;
+            statsEl.innerHTML = `
+                <div class="ms"><span class="ms-label">Trades:</span> <span class="ms-value">${s.totalTrades}</span></div>
+                <div class="ms"><span class="ms-label">W/L:</span> <span class="ms-value ms-win">${s.wins}</span>/<span class="ms-value ms-loss">${s.losses}</span> (${wr}%)</div>
+                <div class="ms"><span class="ms-label">P/L:</span> <span class="ms-value ${s.totalPnL >= 0 ? 'ms-win' : 'ms-loss'}">${s.totalPnL >= 0 ? '+' : ''}${formatNumber(s.totalPnL)}</span></div>
+            `;
+        }
+
         const mtbody = document.querySelector('#market-table tbody');
-        mtbody.innerHTML = data.market.goods.map(g => {
-            const modeClass = g.modeId === 0 ? 'mode-stable' :
-                              g.modeId === 1 || g.modeId === 3 ? 'mode-rise' :
-                              g.modeId === 2 || g.modeId === 4 ? 'mode-fall' : 'mode-chaotic';
-            const ratioClass = g.ratio < 30 ? 'ratio-great' :
-                               g.ratio < 60 ? 'ratio-good' :
-                               g.ratio < 120 ? 'ratio-neutral' :
-                               g.ratio < 180 ? 'ratio-warn' : 'ratio-danger';
-            const deltaSign = g.delta > 0 ? '+' : '';
-            const held = g.stock > 0 ? `<strong>${g.stock}</strong>/${g.maxStock}` : `0/${g.maxStock}`;
-            return `<tr>
-                <td title="${g.name}"><strong>${g.symbol}</strong></td>
-                <td>$${g.val}</td>
-                <td class="dim">$${g.restingVal}</td>
-                <td class="${ratioClass}">${g.ratio}%</td>
-                <td class="${modeClass}">${g.mode}</td>
-                <td>${g.dur}</td>
-                <td class="${g.delta > 0 ? 'mode-rise' : g.delta < 0 ? 'mode-fall' : ''}">${deltaSign}${g.delta}</td>
-                <td>${held}</td>
-            </tr>`;
-        }).join('');
+        if (m.goods) {
+            mtbody.innerHTML = m.goods.map(g => {
+                const modeClass = g.modeId === 0 ? 'mode-stable' :
+                    g.modeId === 1 || g.modeId === 3 ? 'mode-rise' :
+                    g.modeId === 2 || g.modeId === 4 ? 'mode-fall' : 'mode-chaotic';
+                const ratioClass = g.ratio < 30 ? 'ratio-great' : g.ratio < 60 ? 'ratio-good' :
+                    g.ratio < 120 ? 'ratio-neutral' : g.ratio < 180 ? 'ratio-warn' : 'ratio-danger';
+
+                // Signal badge
+                const sig = (g.signal || 'WAIT').toLowerCase();
+                const str = (g.strength || '').toLowerCase();
+                const badgeCls = sig === 'buy' ? 'buy-' + (str || 'weak') :
+                                 sig === 'sell' ? 'sell-' + (str || 'weak') :
+                                 sig === 'hold' ? 'hold-' + (str || 'weak') : 'wait';
+                const badge = `<span class="signal-badge ${badgeCls}">${g.signal}${str ? ' ' + str : ''}</span>`;
+
+                // Position info
+                const held = g.stock > 0 ? `<strong>${g.stock}</strong>/${g.maxStock}` : `<span class="dim">0/${g.maxStock}</span>`;
+                const avg = g.avgPrice ? '$' + g.avgPrice : '<span class="dim">-</span>';
+                const net = g.netPct !== null ? `<span class="${g.netPct >= 0 ? 'net-positive' : 'net-negative'}">${g.netPct >= 0 ? '+' : ''}${g.netPct}%</span>` : '<span class="dim">-</span>';
+
+                // Reasoning (first 2 reasons)
+                const reasons = (g.reasons || []).slice(0, 2).join('. ');
+
+                return `<tr>
+                    <td>${badge}</td>
+                    <td title="${g.name}"><strong>${g.symbol}</strong></td>
+                    <td>$${g.val}</td>
+                    <td class="dim">$${g.restingVal}</td>
+                    <td class="${ratioClass}">${g.ratio}%</td>
+                    <td class="${modeClass}">${g.mode}</td>
+                    <td>${g.dur}t</td>
+                    <td class="${(g.expDelta||0) > 0 ? 'mode-rise' : (g.expDelta||0) < 0 ? 'mode-fall' : ''}">${(g.expDelta||0) > 0 ? '+' : ''}${g.expDelta || 0}</td>
+                    <td>${held}</td>
+                    <td>${avg}</td>
+                    <td>${net}</td>
+                    <td>${g.score || 0}</td>
+                    <td class="market-reason">${reasons}</td>
+                </tr>`;
+            }).join('');
+        }
     }
 
     // Strategy panel

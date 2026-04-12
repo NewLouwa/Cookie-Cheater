@@ -1,22 +1,24 @@
-// Stock Market minigame — FULL CHEAT MODE
-// Reads HIDDEN game state: mode (0-5), duration (ticks left in mode),
-// resting value, overhead, market cap — data normal players can't see.
-// Uses this to make risk-free trades: only buy when guaranteed to rise,
-// only sell when decline is confirmed. The goal is PROFIT, never losses.
+// ============================================================================
+// STOCK MARKET — Value Investor Strategy (from CookieTrading's Cookie Monster)
+// ============================================================================
+// Best-performing strategy: buys at extreme lows and floor recovery zones,
+// holds until massive gains. Combined with advisor scoring for signal strength.
 //
-// Hidden data accessed:
-//   g.mode  — 0=Stable, 1=Slow Rise, 2=Slow Fall, 3=Fast Rise, 4=Fast Fall, 5=Chaotic
-//   g.dur   — ticks remaining in current mode
-//   g.d     — delta (price change per tick)
-//   g.val   — current price
-//   g.stock — shares owned
-//   M.brokers  — broker count (reduces overhead)
-//   M.offices[M.officeLevel] — office level (more warehouse space)
+// Key mechanics exploited:
+// - Floor recovery: price < $5 gets (5-price)/2 added EVERY tick (game-coded guarantee)
+// - Resting value: prices gravitate toward 10*(id+1)+bankLevel-1
+// - Mode visibility: we read the hidden mode (0-5) and duration
+// - Net profit: accounts for DOUBLE overhead (buy AND sell side)
+// - Expected delta: predicts price movement per tick from mode+floor+mean-reversion
+//
+// From CookieTrading's Cookie Monster v3.0 — the highest performing bot.
+// ============================================================================
 
 CookieCheater.modules.market = {
-    // Track our average buy prices to ensure we only sell at profit
-    _positions: {}, // { goodId: { qty: N, totalCost: X } }
+    _positions: {},     // { goodId: { qty, totalCost, avgPrice, entryMode, entryTick } }
     _initialized: false,
+    _signals: {},       // { goodId: { signal, strength, score, reasons } } for dashboard
+    _stats: { totalTrades: 0, wins: 0, losses: 0, totalPnL: 0 },
 
     tick: function() {
         if (!CookieCheater.config.market_enabled) return;
@@ -24,406 +26,381 @@ CookieCheater.modules.market = {
 
         var bank = Game.ObjectsById[5];
         if (!bank || !bank.minigame) return;
-
-        // On first tick, rebuild positions from game state
-        // This handles page reload / re-injection gracefully
-        if (!this._initialized) {
-            this._rebuildPositions(bank.minigame);
-            this._initialized = true;
-        }
         var M = bank.minigame;
 
+        if (!this._initialized) {
+            this._rebuildPositions(M);
+            this._initialized = true;
+        }
+
         var brokers = M.brokers || 0;
-        var overhead = 0.2 * Math.pow(0.95, brokers);
+        var oh = 0.2 * Math.pow(0.95, brokers);
         var bankLevel = bank.level || 1;
 
-        // Upgrade office (more warehouse space, loan slots)
         this._upgradeOffice(M);
+        this._hireBrokers(M, brokers);
 
-        // Hire brokers (reduces overhead)
-        this._hireBrokers(M, overhead);
-
-        // Analyze each good with full hidden data
+        // Analyze + trade each good
         for (var i = 0; i < M.goodsById.length; i++) {
             var g = M.goodsById[i];
-
-            // Check if good is visible/unlocked
             var el = document.getElementById('bankGood-' + g.id);
             var hidden = el ? el.style.display === 'none' : (g.id >= bank.amount);
             if (hidden) continue;
 
-            var analysis = this._analyze(g, M, bankLevel, brokers, overhead);
+            var analysis = this._analyzeGood(g, M, bankLevel, brokers, oh);
+            this._signals[g.id] = analysis.signal;
 
-            if (analysis.action === "buy") {
-                this._executeBuy(M, g, analysis, overhead);
-            } else if (analysis.action === "sell") {
-                this._executeSell(M, g, analysis, overhead);
-            }
+            if (analysis.action === "buy") this._executeBuy(M, g, analysis, oh);
+            else if (analysis.action === "sell") this._executeSell(M, g, analysis, oh);
         }
+
+        this._exposeState(M, bankLevel, brokers, oh);
     },
 
-    _analyze: function(g, M, bankLevel, brokers, overhead) {
+    // ========================================================================
+    // CORE ANALYSIS — Cookie Monster value strategy + advisor scoring
+    // ========================================================================
+    _analyzeGood: function(g, M, bankLevel, brokers, oh) {
         var val = g.val;
-        var mode = g.mode;      // HIDDEN: market mode (0-5)
-        var dur = g.dur;        // HIDDEN: ticks left in this mode
-        var delta = g.d;        // HIDDEN: price change per tick
+        var mode = g.mode;
+        var dur = g.dur;
         var stock = g.stock || 0;
         var maxStock = M.getGoodMaxStock ? M.getGoodMaxStock(g) : 100;
+        var rest = this._restingValue(g.id, bankLevel);
+        var ratio = val / rest;
+        var recovery = this._floorRecovery(val);
+        var expDelta = this._expectedDelta(g, bankLevel);
+        var hurdle = this._overheadHurdle(brokers);
 
-        var restingVal = this._restingValue(g.id, bankLevel);
-        var ratio = val / restingVal;
-        var marketCap = 100 + 3 * Math.max(0, bankLevel - 1);
-
-        var buyPrice = val * (1 + overhead);
-        var sellPrice = val * (1 - overhead);
-
-        // Score-based system: positive = buy, negative = sell
         var score = 0;
         var reasons = [];
+        var action = "hold";
 
-        // === PRICE FLOOR / EXTREME VALUE ===
+        // === PRICE vs RESTING (strongest signal) ===
         if (val <= 1) {
-            score += 60;
-            reasons.push("AT FLOOR ($1) - literally can't go lower");
+            score += 50; reasons.push("AT FLOOR ($1) — can only go up");
         } else if (val < 5) {
-            score += 45;
-            reasons.push("Near floor ($" + val.toFixed(2) + ") - game adds recovery boost");
-        } else if (ratio < 0.2) {
-            score += 40;
-            reasons.push("Extreme discount (" + (ratio * 100).toFixed(0) + "% of resting $" + restingVal + ")");
-        } else if (ratio < 0.4) {
-            score += 28;
-            reasons.push("Very cheap (" + (ratio * 100).toFixed(0) + "% of $" + restingVal + ")");
-        } else if (ratio < 0.6) {
-            score += 15;
-            reasons.push("Below resting (" + (ratio * 100).toFixed(0) + "%)");
-        } else if (val > marketCap) {
-            score -= 35;
-            reasons.push("Above market cap ($" + marketCap + ") - delta dampened");
+            score += 40; reasons.push("Floor recovery active (+$" + recovery.toFixed(1) + "/tick guaranteed)");
+        } else if (ratio < 0.15) {
+            score += 35; reasons.push("Rock bottom (" + (ratio * 100).toFixed(0) + "% of $" + rest + ")");
+        } else if (ratio < 0.3) {
+            score += 25; reasons.push("Deep value (" + (ratio * 100).toFixed(0) + "% of $" + rest + ")");
+        } else if (ratio < 0.5) {
+            score += 12; reasons.push("Below resting (" + (ratio * 100).toFixed(0) + "%)");
         } else if (ratio > 2.0) {
-            score -= 30;
-            reasons.push("Extremely overvalued (" + (ratio * 100).toFixed(0) + "%)");
-        } else if (ratio > 1.5) {
-            score -= 20;
-            reasons.push("Overvalued (" + (ratio * 100).toFixed(0) + "%)");
+            score -= 25; reasons.push("Extremely overvalued (" + (ratio * 100).toFixed(0) + "%)");
+        } else if (ratio > 1.4) {
+            score -= 15; reasons.push("Overvalued (" + (ratio * 100).toFixed(0) + "%)");
         }
 
-        // === MODE ANALYSIS (THE CHEAT) ===
+        // === MODE (medium signal) ===
+        var modeNames = ["Stable", "Slow Rise", "Slow Fall", "Fast Rise", "Fast Fall", "Chaotic"];
         switch (mode) {
-            case 1: // Slow Rise — price going up
-                if (dur > 200) {
-                    score += 25;
-                    reasons.push("SLOW RISE, long runway (" + dur + " ticks) - BUY ZONE");
-                } else if (dur > 50) {
-                    score += 15;
-                    reasons.push("Slow Rise (" + dur + "t left)");
-                } else {
-                    score += 3;
-                    reasons.push("Slow Rise ending (" + dur + "t) - be cautious");
-                }
+            case 1: // Slow Rise
+                if (dur > 200) { score += 20; reasons.push("Slow Rise, long runway (" + dur + "t)"); }
+                else if (dur > 50) { score += 12; reasons.push("Slow Rise (" + dur + "t)"); }
+                else { score += 3; reasons.push("Slow Rise ending (" + dur + "t)"); }
                 break;
+            case 3: // Fast Rise — 30% crash risk per tick
+                if (ratio < 0.5) { score += 10; reasons.push("Fast Rise + cheap"); }
+                else if (ratio > 1.0) { score -= 15; reasons.push("Fast Rise + expensive (crash risk 30%/tick)"); }
+                else { score -= 5; reasons.push("Fast Rise unstable (" + dur + "t)"); }
+                break;
+            case 2: // Slow Fall
+                if (dur > 200) { score -= 18; reasons.push("Slow Fall, long decline (" + dur + "t)"); }
+                else if (dur < 30) { score += 8; reasons.push("Slow Fall ending — bottom forming"); }
+                else { score -= 10; reasons.push("Slow Fall (" + dur + "t)"); }
+                break;
+            case 4: // Fast Fall
+                if (dur < 15) { score += 15; reasons.push("Fast Fall ending — reversal imminent"); }
+                else if (dur < 50) { score -= 15; reasons.push("Fast Fall (" + dur + "t)"); }
+                else { score -= 25; reasons.push("Fast Fall deep plunge (" + dur + "t)"); }
+                break;
+            case 5: // Chaotic
+                score -= 10; reasons.push("Chaotic (" + dur + "t)");
+                break;
+            case 0: // Stable
+                if (ratio < 0.4) { score += 10; reasons.push("Stable + cheap — accumulation zone"); }
+                break;
+        }
 
-            case 3: // Fast Rise — dangerous, 30% crash/tick, 3% flip to Fast Fall
-                if (ratio < 0.5) {
-                    score += 10;
-                    reasons.push("Fast Rise + cheap - worth the risk");
-                } else if (ratio > 1.0) {
-                    score -= 20;
-                    reasons.push("Fast Rise + expensive - CRASH IMMINENT (30%/tick)");
-                } else {
-                    score -= 5;
-                    reasons.push("Fast Rise (" + dur + "t) - unstable, 30% crash risk");
-                }
-                break;
-
-            case 2: // Slow Fall — price going down
-                if (dur > 200) {
-                    score -= 22;
-                    reasons.push("SLOW FALL, long decline (" + dur + "t) - AVOID");
-                } else if (dur < 30) {
-                    score += 10;
-                    reasons.push("Slow Fall ending (" + dur + "t) - bottom forming");
-                } else {
-                    score -= 12;
-                    reasons.push("Slow Fall (" + dur + "t) - still declining");
-                }
-                break;
-
-            case 4: // Fast Fall — aggressive decline
-                if (dur < 15) {
-                    score += 18;
-                    reasons.push("FAST FALL nearly done (" + dur + "t) - reversal imminent");
-                } else if (dur < 40) {
-                    score -= 18;
-                    reasons.push("Fast Fall (" + dur + "t) - steep drop");
-                } else {
-                    score -= 30;
-                    reasons.push("Fast Fall, deep plunge (" + dur + "t) - STAY AWAY");
-                }
-                break;
-
-            case 5: // Chaotic — random +-5% swings
-                if (dur < 15 && ratio < 0.5) {
-                    score += 5;
-                    reasons.push("Chaos ending (" + dur + "t) + cheap");
-                } else {
-                    score -= 12;
-                    reasons.push("CHAOTIC (" + dur + "t) - unpredictable swings");
-                }
-                break;
-
-            case 0: // Stable — low volatility
-                if (ratio < 0.4) {
-                    score += 12;
-                    reasons.push("Stable + cheap - good accumulation zone");
-                } else {
-                    score += 0;
-                    reasons.push("Stable (" + dur + "t) - flat");
-                }
-                break;
+        // === EXPECTED PRICE MOVEMENT ===
+        if (expDelta > 2) {
+            score += 8;
+            reasons.push("Expected delta +" + expDelta.toFixed(1) + "/tick");
+        } else if (expDelta < -3) {
+            score -= 8;
+            reasons.push("Expected delta " + expDelta.toFixed(1) + "/tick");
         }
 
         // === POSITION MANAGEMENT ===
         if (stock > 0) {
             var pos = this._positions[g.id];
             if (pos && pos.qty > 0) {
-                var avgCost = pos.totalCost / pos.qty;
-                var profitPct = (sellPrice - avgCost) / avgCost;
+                var net = this._netProfit(pos.avgPrice, val, brokers);
+                var be = this._breakeven(pos.avgPrice, brokers);
 
-                if (profitPct > 0.5) {
-                    score -= 35;
-                    reasons.push("TAKE PROFIT: +" + (profitPct * 100).toFixed(1) + "% gain");
-                } else if (profitPct > 0.2 && (mode === 2 || mode === 4 || mode === 5)) {
-                    score -= 25;
-                    reasons.push("Sell before decline: +" + (profitPct * 100).toFixed(1) + "% gain, mode turning bad");
-                } else if (profitPct > 0.1 && mode === 4 && dur > 50) {
-                    score -= 20;
-                    reasons.push("Exit Fast Fall: +" + (profitPct * 100).toFixed(1) + "% while still positive");
-                } else if (profitPct < -0.05 && (mode === 2 || mode === 4) && dur > 100) {
-                    // Losing money AND mode is falling with long runway
-                    // DON'T sell at a loss unless it's going to get much worse
-                    if (profitPct < -0.15 && mode === 4 && dur > 200) {
-                        score -= 15;
-                        reasons.push("CUT LOSS: " + (profitPct * 100).toFixed(1) + "% in deep Fast Fall");
-                    }
-                    // Otherwise hold — don't realize losses
-                } else if (mode === 1 && dur > 50) {
-                    score += 12;
-                    reasons.push("Hold: rising mode with " + dur + "t runway");
-                }
-            } else {
-                // No tracked position — use ratio as fallback
-                if (ratio > 1.5 && (mode === 2 || mode === 4)) {
-                    score -= 25;
-                    reasons.push("Overvalued + falling - sell");
-                } else if (ratio > 2.0) {
-                    score -= 30;
-                    reasons.push("Extremely overvalued - sell");
+                if (net > 0.80) {
+                    score -= 40; reasons.push("MASSIVE GAIN +" + (net * 100).toFixed(0) + "% net — SELL");
+                } else if (ratio > 1.5 && net > 0.50) {
+                    score -= 35; reasons.push("Target hit (" + (ratio * 100).toFixed(0) + "% resting), +" + (net * 100).toFixed(0) + "% net");
+                } else if (mode === 1 && ratio < 1.3 && net > 0) {
+                    score += 10; reasons.push("Riding Slow Rise, +" + (net * 100).toFixed(0) + "% net");
+                } else if ((mode === 2 || mode === 4) && dur > 30 && net > 0.05) {
+                    score -= 20; reasons.push("Exit " + modeNames[mode] + " while profitable, +" + (net * 100).toFixed(0) + "% net");
+                } else if (mode === 4 && dur > 100 && net < -0.30) {
+                    score -= 15; reasons.push("Stop loss in Fast Fall, " + (net * 100).toFixed(0) + "% net");
                 }
             }
         }
 
         // === CAPACITY CHECK ===
-        if (stock >= maxStock && score > 0) {
-            score = 0;
-            reasons.push("Position full (" + stock + "/" + maxStock + ")");
-        }
+        if (stock >= maxStock && score > 0) { score = 0; reasons.push("Position full"); }
 
-        // === HIGH OVERHEAD PENALTY ===
-        if (overhead > 0.15 && score > 0 && score < 30) {
+        // === OVERHEAD DRAG ===
+        if (oh > 0.15 && score > 0 && score < 25) {
             score = Math.floor(score * 0.5);
-            reasons.push("High overhead (" + (overhead * 100).toFixed(1) + "%) - needs bigger moves");
+            reasons.push("High overhead (" + (oh * 100).toFixed(1) + "%)");
         }
 
-        // === FINAL DECISION ===
-        var action = "hold";
-        if (stock > 0 && score < -15) {
-            action = "sell";
-        } else if (stock === 0 && score > 25) {
-            action = "buy";
-        } else if (stock > 0 && stock < maxStock && score > 35) {
-            action = "buy"; // Add to position
+        // === COOKIE BUDGET ===
+        if (stock === 0 && score > 0) {
+            var buyCost = val * (1 + oh);
+            if (buyCost > Game.cookies * 0.1) {
+                score = Math.min(score, 5);
+                reasons.push("Can't afford meaningful position");
+            }
+        }
+
+        // === DECISION ===
+        // Value investor thresholds (Cookie Monster style — patient)
+        if (stock > 0 && score < -15) action = "sell";
+        else if (stock === 0 && score > 25) action = "buy";
+
+        // Signal for dashboard
+        var signal, strength;
+        if (stock > 0) {
+            if (score < -20) { signal = "SELL"; strength = "strong"; }
+            else if (score < -8) { signal = "SELL"; strength = "moderate"; }
+            else if (score > 15) { signal = "HOLD"; strength = "strong"; }
+            else { signal = "HOLD"; strength = "weak"; }
+        } else {
+            if (score > 35) { signal = "BUY"; strength = "strong"; }
+            else if (score > 18) { signal = "BUY"; strength = "moderate"; }
+            else if (score > 8) { signal = "BUY"; strength = "weak"; }
+            else { signal = "WAIT"; strength = ""; }
         }
 
         return {
             action: action,
             score: score,
             reasons: reasons,
-            val: val,
-            ratio: ratio,
-            mode: mode,
-            dur: dur,
-            stock: stock,
-            maxStock: maxStock,
-            restingVal: restingVal,
-            buyPrice: buyPrice,
-            sellPrice: sellPrice,
+            signal: { signal: signal, strength: strength, score: score, reasons: reasons },
+            val: val, ratio: ratio, mode: mode, dur: dur,
+            stock: stock, maxStock: maxStock, rest: rest,
+            expDelta: expDelta, recovery: recovery,
+            netPct: stock > 0 && this._positions[g.id] ? this._netProfit(this._positions[g.id].avgPrice, val, brokers) : 0,
+            breakeven: stock > 0 && this._positions[g.id] ? this._breakeven(this._positions[g.id].avgPrice, brokers) : 0,
         };
     },
 
-    _executeBuy: function(M, g, analysis, overhead) {
+    // ========================================================================
+    // EXECUTION
+    // ========================================================================
+    _executeBuy: function(M, g, analysis, oh) {
         var maxStock = analysis.maxStock;
-        var currentStock = analysis.stock;
-        var space = maxStock - currentStock;
+        var space = maxStock - analysis.stock;
         if (space <= 0) return;
 
-        // Size position based on signal strength
-        var pctOfMax;
-        if (analysis.score >= 50) {
-            pctOfMax = 0.5;  // Strong signal: buy 50% of capacity
-        } else if (analysis.score >= 35) {
-            pctOfMax = 0.25; // Moderate: 25%
-        } else {
-            pctOfMax = 0.1;  // Weak: 10%
+        // Cookie Monster sizing: full capacity at floor/extreme, 50% at deep value
+        var qty;
+        if (analysis.score >= 40) qty = Math.min(space, maxStock);
+        else if (analysis.score >= 30) qty = Math.min(space, Math.ceil(maxStock * 0.5));
+        else qty = Math.min(space, Math.ceil(maxStock * 0.25));
+
+        var cost = analysis.val * qty * (1 + oh);
+        if (cost > Game.cookies * 0.1) {
+            qty = Math.max(1, Math.floor((Game.cookies * 0.1) / (analysis.val * (1 + oh))));
+            cost = analysis.val * qty * (1 + oh);
         }
-
-        var qty = Math.min(space, Math.max(1, Math.floor(maxStock * pctOfMax)));
-        var totalCost = analysis.buyPrice * qty;
-
-        // Never spend more than 10% of cookies on a single trade
-        if (totalCost > Game.cookies * 0.1) {
-            qty = Math.max(1, Math.floor((Game.cookies * 0.1) / analysis.buyPrice));
-            totalCost = analysis.buyPrice * qty;
-        }
-
-        // Final affordability check
-        if (totalCost > Game.cookies) return;
-        if (qty <= 0) return;
+        if (cost > Game.cookies || qty <= 0) return;
 
         M.buyGood(g.id, qty);
 
-        // Track position for profit calculation
-        if (!this._positions[g.id]) {
-            this._positions[g.id] = { qty: 0, totalCost: 0 };
-        }
+        if (!this._positions[g.id]) this._positions[g.id] = { qty: 0, totalCost: 0, avgPrice: 0, entryMode: analysis.mode };
         this._positions[g.id].qty += qty;
-        this._positions[g.id].totalCost += totalCost;
+        this._positions[g.id].totalCost += cost;
+        this._positions[g.id].avgPrice = this._positions[g.id].totalCost / this._positions[g.id].qty;
 
+        this._stats.totalTrades++;
         var modeNames = ["Stable", "SlowRise", "SlowFall", "FastRise", "FastFall", "Chaotic"];
-        CookieCheater.log("market", "BUY",
-            g.symbol + " x" + qty +
-            " @ $" + analysis.val.toFixed(2) +
-            " | mode=" + modeNames[analysis.mode] + "(" + analysis.dur + "t)" +
-            " | ratio=" + (analysis.ratio * 100).toFixed(0) + "%" +
+        CookieCheater.justify("market", "BUY",
+            g.symbol + " x" + qty + " @ $" + analysis.val.toFixed(2) +
+            " | " + modeNames[analysis.mode] + "(" + analysis.dur + "t)" +
+            " | " + (analysis.ratio * 100).toFixed(0) + "% of resting" +
             " | score=" + analysis.score +
-            " | " + analysis.reasons[0]
-        );
+            (analysis.recovery > 0 ? " | FLOOR BOOST +$" + analysis.recovery.toFixed(1) + "/tick" : "") +
+            " | " + analysis.reasons[0]);
     },
 
-    _executeSell: function(M, g, analysis, overhead) {
+    _executeSell: function(M, g, analysis, oh) {
         var stock = analysis.stock;
         if (stock <= 0) return;
 
-        // Check: would this sell be profitable?
+        // Never sell at a loss unless score is very negative (stop loss)
         var pos = this._positions[g.id];
         if (pos && pos.qty > 0) {
-            var avgCost = pos.totalCost / pos.qty;
-            var sellRevenue = analysis.sellPrice;
-
-            // NEVER sell at a loss unless score is extremely negative (deep trouble)
-            if (sellRevenue < avgCost && analysis.score > -25) {
-                CookieCheater.log("market", "HOLD",
-                    g.symbol + " - would lose $" + (avgCost - sellRevenue).toFixed(2) +
-                    "/share, holding for recovery"
-                );
-                return;
-            }
+            var net = this._netProfit(pos.avgPrice, analysis.val, oh / (1 + oh));
+            if (net < 0 && analysis.score > -25) return;
         }
 
         M.sellGood(g.id, stock);
 
-        // Log profit
-        var profitStr = "";
+        var pnlStr = "";
         if (pos && pos.qty > 0) {
-            var avgCost = pos.totalCost / pos.qty;
-            var profit = (analysis.sellPrice - avgCost) * stock;
-            var profitPct = ((analysis.sellPrice - avgCost) / avgCost * 100);
-            profitStr = " | P/L=" + (profit > 0 ? "+" : "") + profit.toFixed(2) +
-                        " (" + (profitPct > 0 ? "+" : "") + profitPct.toFixed(1) + "%)";
+            var net = this._netProfit(pos.avgPrice, analysis.val, M.brokers || 0);
+            var pnl = analysis.val * stock * (1 - oh) - pos.totalCost;
+            pnlStr = " | P/L " + (pnl > 0 ? "+" : "") + pnl.toFixed(0) + " (" + (net > 0 ? "+" : "") + (net * 100).toFixed(1) + "% net)";
+            this._stats.totalPnL += pnl;
+            if (pnl > 0) this._stats.wins++; else this._stats.losses++;
         }
 
-        // Clear tracked position
-        if (this._positions[g.id]) {
-            var soldQty = Math.min(stock, this._positions[g.id].qty);
-            var avgCost = this._positions[g.id].totalCost / this._positions[g.id].qty;
-            this._positions[g.id].qty -= soldQty;
-            this._positions[g.id].totalCost -= avgCost * soldQty;
-            if (this._positions[g.id].qty <= 0) {
-                delete this._positions[g.id];
-            }
-        }
+        if (this._positions[g.id]) delete this._positions[g.id];
 
+        this._stats.totalTrades++;
         var modeNames = ["Stable", "SlowRise", "SlowFall", "FastRise", "FastFall", "Chaotic"];
-        CookieCheater.log("market", "SELL",
-            g.symbol + " x" + stock +
-            " @ $" + analysis.val.toFixed(2) +
-            " | mode=" + modeNames[analysis.mode] + "(" + analysis.dur + "t)" +
-            profitStr +
-            " | " + analysis.reasons[0]
-        );
+        CookieCheater.justify("market", "SELL",
+            g.symbol + " x" + stock + " @ $" + analysis.val.toFixed(2) +
+            " | " + modeNames[analysis.mode] + "(" + analysis.dur + "t)" +
+            pnlStr + " | " + analysis.reasons[0]);
     },
 
-    _upgradeOffice: function(M) {
-        // Auto-upgrade office (costs cookies, not lumps)
-        if (!CookieCheater.throttle("market_office", 120000)) return;
-        if (!M.officeLevel || M.officeLevel >= 5) return;
-
-        try {
-            // Office upgrade button
-            var cost = M.offices[M.officeLevel + 1] ? M.offices[M.officeLevel + 1].cost : null;
-            if (cost && Game.cookies >= cost && cost < Game.cookies * 0.05) {
-                M.upgradeOffice();
-                CookieCheater.justify("market", "OFFICE_UPGRADE",
-                    "Office level " + (M.officeLevel) + " — more warehouse space + loan slots");
-            }
-        } catch(e) {}
+    // ========================================================================
+    // HELPER FUNCTIONS (from CookieTrading)
+    // ========================================================================
+    _restingValue: function(goodId, bankLevel) {
+        return 10 * (goodId + 1) + Math.max(0, (bankLevel || 1) - 1);
     },
 
-    _hireBrokers: function(M, currentOverhead) {
-        // Brokers reduce overhead: 20% * 0.95^brokers
-        // Cost: $1200. Max: floor(grandmaCount/10) + grandmaLevel
-        if (!CookieCheater.throttle("market_brokers", 60000)) return;
-
-        var brokers = M.brokers || 0;
-        // Broker cap from wiki
-        var grandmas = Game.ObjectsById[1] ? Game.ObjectsById[1].amount : 0;
-        var grandmaLevel = Game.ObjectsById[1] ? (Game.ObjectsById[1].level || 0) : 0;
-        var maxBrokers = Math.floor(grandmas / 10) + grandmaLevel;
-        if (brokers >= maxBrokers) return;
-        if (brokers >= 100) return; // Hard cap for sanity
-        if (currentOverhead < 0.02) return; // Already under 2%
-
-        // Broker cost: Game.ObjectsById[5].minigame.brokersPrice
-        // In practice it's around $1200 * (1 + brokers * 0.15)
-        try {
-            var cost = M.brokersPrice ? M.brokersPrice() : 1200;
-            if (cost < Game.cookies * 0.01) { // Less than 1% of cookies
-                M.hireBroker();
-                CookieCheater.log("market", "hire_broker",
-                    "Broker #" + (brokers + 1) +
-                    " | overhead now " + (0.2 * Math.pow(0.95, brokers + 1) * 100).toFixed(1) + "%"
-                );
-            }
-        } catch(e) {}
+    _floorRecovery: function(price) {
+        // Game adds (5-price)/2 per tick when price < $5. Guaranteed.
+        return price < 5 ? (5 - price) / 2 : 0;
     },
 
+    _expectedDelta: function(g, bankLevel) {
+        // Predict price movement per tick from mode + floor + mean reversion
+        var mode = g.mode;
+        var base = {0: 0, 1: 0.5, 2: -0.5, 3: 2.9, 4: -5.0, 5: 0}[mode] || 0;
+        // Fast Rise: 70% chance +5, 30% crash = 0.7*5 + 0.3*(-2) = 2.9
+        base += this._floorRecovery(g.val);
+        var rest = this._restingValue(g.id, bankLevel);
+        if (rest > 0) base += (rest - g.val) * 0.01; // Mean reversion 1%/tick
+        return base;
+    },
+
+    _netProfit: function(buyAvg, sellPrice, brokers) {
+        // Net profit % after overhead on BOTH buy and sell sides
+        var oh = typeof brokers === 'number' && brokers > 1 ? 0.2 * Math.pow(0.95, brokers) : brokers; // Accept oh directly or broker count
+        var actualBuy = buyAvg * (1 + oh);
+        var actualSell = sellPrice * (1 - oh);
+        return actualBuy > 0 ? (actualSell - actualBuy) / actualBuy : 0;
+    },
+
+    _breakeven: function(buyAvg, brokers) {
+        var oh = 0.2 * Math.pow(0.95, brokers);
+        var denom = 1 - oh;
+        return denom > 0 ? buyAvg * (1 + oh) / denom : buyAvg * 2;
+    },
+
+    _overheadHurdle: function(brokers) {
+        var oh = 0.2 * Math.pow(0.95, brokers);
+        var denom = 1 - oh;
+        return denom > 0 ? ((1 + oh) / denom - 1) : 1;
+    },
+
+    // ========================================================================
+    // INFRASTRUCTURE
+    // ========================================================================
     _rebuildPositions: function(M) {
-        // Reconstruct position tracking from game state after page reload.
-        // We don't know the exact buy price, so estimate from current value.
-        // This means the first sell after reload might be slightly off,
-        // but it's better than having no position data at all.
         for (var i = 0; i < M.goodsById.length; i++) {
             var g = M.goodsById[i];
             if (g.stock > 0 && !this._positions[g.id]) {
-                // Assume we bought near current price (conservative estimate)
-                var estimatedCost = g.val * g.stock * 1.1; // Add 10% margin of safety
-                this._positions[g.id] = { qty: g.stock, totalCost: estimatedCost };
-                CookieCheater.log("market", "rebuild", g.symbol + " x" + g.stock + " (estimated avg $" + (estimatedCost / g.stock).toFixed(2) + ")");
+                var estimated = g.val * g.stock * 1.1;
+                this._positions[g.id] = { qty: g.stock, totalCost: estimated, avgPrice: g.val * 1.1, entryMode: g.mode };
+                CookieCheater.log("market", "rebuild", g.symbol + " x" + g.stock + " (est avg $" + (g.val * 1.1).toFixed(2) + ")");
             }
         }
     },
 
-    _restingValue: function(goodId, bankLevel) {
-        return 10 * (goodId + 1) + Math.max(0, (bankLevel || 1) - 1);
-    }
+    _upgradeOffice: function(M) {
+        if (!CookieCheater.throttle("market_office", 120000)) return;
+        try {
+            if (M.officeLevel >= 5) return;
+            var nextOffice = M.offices[M.officeLevel + 1];
+            if (nextOffice && nextOffice.cost && Game.cookies >= nextOffice.cost && nextOffice.cost < Game.cookies * 0.05) {
+                M.upgradeOffice();
+                CookieCheater.justify("market", "OFFICE", "Upgraded office to level " + (M.officeLevel) + " — more warehouse space");
+            }
+        } catch (e) {}
+    },
+
+    _hireBrokers: function(M, brokers) {
+        if (!CookieCheater.throttle("market_brokers", 60000)) return;
+        var grandmas = Game.ObjectsById[1] ? Game.ObjectsById[1].amount : 0;
+        var grandmaLevel = Game.ObjectsById[1] ? (Game.ObjectsById[1].level || 0) : 0;
+        var maxBrokers = Math.floor(grandmas / 10) + grandmaLevel;
+        if (brokers >= maxBrokers || brokers >= 100) return;
+        var oh = 0.2 * Math.pow(0.95, brokers);
+        if (oh < 0.02) return;
+        try {
+            var cost = M.brokersPrice ? M.brokersPrice() : 1200;
+            if (cost < Game.cookies * 0.01) {
+                M.hireBroker();
+                CookieCheater.justify("market", "BROKER",
+                    "Hired broker #" + (brokers + 1) + " — overhead " + (0.2 * Math.pow(0.95, brokers + 1) * 100).toFixed(1) + "%");
+            }
+        } catch (e) {}
+    },
+
+    _exposeState: function(M, bankLevel, brokers, oh) {
+        var goods = [];
+        for (var i = 0; i < M.goodsById.length; i++) {
+            var g = M.goodsById[i];
+            var el = document.getElementById('bankGood-' + g.id);
+            var hidden = el ? el.style.display === 'none' : (g.id >= Game.ObjectsById[5].amount);
+            if (hidden) continue;
+            var rest = this._restingValue(g.id, bankLevel);
+            var sig = this._signals[g.id] || {};
+            var pos = this._positions[g.id];
+            goods.push({
+                id: g.id, name: g.name, symbol: g.symbol,
+                val: Math.round(g.val * 100) / 100,
+                delta: Math.round(g.d * 1000) / 1000,
+                mode: ["Stable", "Slow Rise", "Slow Fall", "Fast Rise", "Fast Fall", "Chaotic"][g.mode],
+                modeId: g.mode, dur: g.dur,
+                stock: g.stock || 0,
+                maxStock: M.getGoodMaxStock ? M.getGoodMaxStock(g) : 100,
+                restingVal: rest,
+                ratio: Math.round((g.val / rest) * 100),
+                expDelta: Math.round(this._expectedDelta(g, bankLevel) * 10) / 10,
+                signal: sig.signal || "WAIT",
+                strength: sig.strength || "",
+                score: sig.score || 0,
+                reasons: sig.reasons || [],
+                // Position info
+                avgPrice: pos ? Math.round(pos.avgPrice * 100) / 100 : null,
+                netPct: pos ? Math.round(this._netProfit(pos.avgPrice, g.val, brokers) * 1000) / 10 : null,
+                breakeven: pos ? Math.round(this._breakeven(pos.avgPrice, brokers) * 100) / 100 : null,
+            });
+        }
+        CookieCheater._marketInfo = {
+            goods: goods,
+            brokers: brokers,
+            overhead: Math.round(oh * 10000) / 100,
+            hurdle: Math.round(this._overheadHurdle(brokers) * 10000) / 100,
+            profit: Math.round((M.profit || 0) * 100) / 100,
+            officeLevel: M.officeLevel || 0,
+            stats: this._stats,
+        };
+    },
 };

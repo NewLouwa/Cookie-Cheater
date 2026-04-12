@@ -229,7 +229,7 @@ var CookieCheater = window.CookieCheater = {
             elderWrath: Game.elderWrath || 0,
             wrinklers: Game.wrinklers ? Game.wrinklers.filter(function(w) { return w.phase === 2; }).length : 0,
             dragonLevel: Game.dragonLevel || 0,
-            market: market,
+            market: CookieCheater._marketInfo || market,
             luckyBank: CookieCheater.getLuckyBank(),
             luckyBankPct: CookieCheater.getLuckyBank() > 0 ? Math.min(100, Math.round(Game.cookies / CookieCheater.getLuckyBank() * 100)) : 100,
             comboActive: CookieCheater._comboActive || false,
