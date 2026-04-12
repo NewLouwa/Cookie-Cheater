@@ -212,6 +212,9 @@ function updateDashboard(data) {
     // Sugar lump approval card
     updateLumpCard(data.lumpProposal);
 
+    // Open positions + P/L chart
+    if (data.market) updatePositions(data.market);
+
     // Loans
     if (data.market && data.market.loans) updateLoans(data.market.loans);
 
@@ -401,6 +404,134 @@ function initChart() {
                 }
             },
             plugins: { legend: { display: false } },
+            animation: false,
+        }
+    });
+}
+
+// === Positions table + P/L chart ===
+let pnlChart = null;
+let pnlData = [];
+const MAX_PNL_POINTS = 300;
+
+function updatePositions(market) {
+    if (!market.goods) return;
+
+    // Open positions table
+    const positions = market.goods.filter(g => g.stock > 0 && g.avgPrice);
+    const tbody = document.querySelector('#positions-table tbody');
+    if (tbody) {
+        let totalUnrealized = 0;
+        let totalCost = 0;
+        tbody.innerHTML = positions.map(g => {
+            const current = g.val;
+            const unrealized = (current - g.avgPrice) * g.stock;
+            totalUnrealized += unrealized;
+            totalCost += g.avgPrice * g.stock;
+            const netCls = g.netPct >= 0 ? 'net-positive' : 'net-negative';
+            return `<tr>
+                <td><span class="good-icon good-icon-${g.id}"></span>${g.symbol}</td>
+                <td>${g.stock}</td>
+                <td>$${g.avgPrice}</td>
+                <td>$${g.val}</td>
+                <td>$${g.breakeven || '-'}</td>
+                <td class="${netCls}">${g.netPct >= 0 ? '+' : ''}${g.netPct}% (${unrealized >= 0 ? '+' : ''}${formatNumber(unrealized)})</td>
+            </tr>`;
+        }).join('');
+
+        if (positions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="dim">No open positions</td></tr>';
+        }
+
+        // Summary
+        const sumEl = document.getElementById('positions-summary');
+        if (sumEl && market.stats) {
+            const s = market.stats;
+            const totalVal = positions.reduce((sum, g) => sum + g.val * g.stock, 0);
+            sumEl.innerHTML = `${positions.length} position${positions.length !== 1 ? 's' : ''} | ` +
+                `Value: $${formatNumber(totalVal)} | ` +
+                `Unrealized: <span class="${totalUnrealized >= 0 ? 'net-positive' : 'net-negative'}">${totalUnrealized >= 0 ? '+' : ''}${formatNumber(totalUnrealized)}</span> | ` +
+                `Realized: <span class="${s.totalPnL >= 0 ? 'net-positive' : 'net-negative'}">${s.totalPnL >= 0 ? '+' : ''}${formatNumber(s.totalPnL)}</span>`;
+        }
+    }
+
+    // P/L chart
+    if (market.stats) {
+        updatePnlChart(market.stats.totalPnL || 0);
+    }
+}
+
+function updatePnlChart(totalPnl) {
+    if (!pnlChart) initPnlChart();
+
+    const now = new Date();
+    const label = String(now.getHours()).padStart(2, '0') + ':' +
+                  String(now.getMinutes()).padStart(2, '0') + ':' +
+                  String(now.getSeconds()).padStart(2, '0');
+
+    pnlData.push({ label, value: totalPnl });
+    if (pnlData.length > MAX_PNL_POINTS) pnlData.shift();
+
+    pnlChart.data.labels = pnlData.map(d => d.label);
+    pnlChart.data.datasets[0].data = pnlData.map(d => d.value);
+    pnlChart.update('none');
+}
+
+function initPnlChart() {
+    const ctx = document.getElementById('pnl-chart');
+    if (!ctx) return;
+    pnlChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Total P/L',
+                data: [],
+                borderColor: function(ctx) {
+                    const v = ctx.raw;
+                    return v >= 0 ? '#4ade80' : '#f87171';
+                },
+                segment: {
+                    borderColor: function(ctx) {
+                        return ctx.p1.raw >= 0 ? '#4ade80' : '#f87171';
+                    }
+                },
+                backgroundColor: 'rgba(74,222,128,0.05)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: true,
+                    ticks: { color: '#6b6b8a', maxTicksLimit: 6, font: { size: 9 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                },
+                y: {
+                    display: true,
+                    ticks: { color: '#6b6b8a', callback: v => formatNumber(v), font: { size: 9 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                annotation: {
+                    annotations: {
+                        zeroLine: {
+                            type: 'line',
+                            yMin: 0, yMax: 0,
+                            borderColor: 'rgba(255,255,255,0.15)',
+                            borderWidth: 1,
+                            borderDash: [4, 4],
+                        }
+                    }
+                }
+            },
             animation: false,
         }
     });
