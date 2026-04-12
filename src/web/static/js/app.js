@@ -442,6 +442,7 @@ async function takeLoan(id) {
 }
 
 function updateGardenGrid(info) {
+    const pIcons = info.plantIcons || {};
     // Header info
     document.getElementById('garden-phase-tag').textContent = info.phase || '';
     document.getElementById('garden-seeds').textContent = (info.seedsUnlocked || 0) + '/' + (info.seedsTotal || 34) + ' seeds';
@@ -459,18 +460,20 @@ function updateGardenGrid(info) {
         document.getElementById('gs-next').textContent = strat.nextStep || '';
         document.getElementById('gs-soil').textContent = strat.soilReason || '';
 
-        // Mutation roadmap
+        // Mutation roadmap with plant icons
         const roadmapEl = document.getElementById('gs-roadmap');
+        const pIcons = info.plantIcons || {};
         if (strat.roadmap && strat.roadmap.length > 0) {
             roadmapEl.innerHTML = strat.roadmap.map(m => {
                 const cls = m.unlocked ? 'unlocked' : m.available ? 'available' : 'locked';
-                const icon = m.unlocked ? '&#10003;' : m.available ? '&#9658;' : '&#9679;';
+                const check = m.unlocked ? '&#10003;' : m.available ? '&#9658;' : '&#9679;';
+                const cIcon = pIcons[m.child] !== undefined ? `<span class="cc-plant cc-plant-${pIcons[m.child]}"></span>` : '';
                 const parents = m.parents[0] === m.parents[1]
                     ? m.parents[0] + ' x2'
                     : m.parents[0] + ' + ' + m.parents[1];
                 return `<div class="gs-mutation ${cls}">
-                    <span class="gs-check">${icon}</span>
-                    <span class="gs-child">${m.child}</span>
+                    <span class="gs-check">${check}</span>
+                    ${cIcon}<span class="gs-child">${m.child}</span>
                     <span class="gs-parents">${parents}</span>
                     <span class="gs-chance">${(m.chance * 100).toFixed(1)}%</span>
                 </div>`;
@@ -504,8 +507,11 @@ function updateGardenGrid(info) {
 
             if (t.empty) {
                 const isTarget = goal && goal.goal === 'mutation_target';
+                const targetIcon = isTarget && goal.targetChild && pIcons[goal.targetChild] !== undefined
+                    ? `<span class="cc-plant cc-plant-${pIcons[goal.targetChild]}" style="margin:0;opacity:0.4"></span>`
+                    : (isTarget ? '<span class="tile-name" style="color:#fbbf24">?</span>' : '');
                 html += `<div class="garden-tile ${isTarget ? 'mutation-target' : 'empty'}" title="${isTarget ? 'Mutation target: ' + (goal.targetChild || '?') : 'Empty'}">
-                    ${isTarget ? '<span class="tile-name" style="color:#fbbf24">?</span>' : ''}
+                    ${targetIcon}
                 </div>`;
             } else {
                 const cls = t.mature ? 'mature' : 'planted';

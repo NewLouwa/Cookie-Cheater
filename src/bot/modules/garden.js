@@ -410,6 +410,7 @@ CookieCheater.modules.garden = {
             farmLevel: farm.level || 0,
             nextMutation: nextMut,
             strategy: strat,
+            plantIcons: this._getPlantIconMap(M),
         };
     },
 
@@ -521,6 +522,16 @@ CookieCheater.modules.garden = {
         }
 
         return s;
+    },
+
+    // Map plant names to icon IDs for the dashboard
+    _getPlantIconMap: function(M) {
+        var map = {};
+        for (var i = 0; i < M.plantsById.length; i++) {
+            var p = M.plantsById[i];
+            if (p) map[p.name] = p.icon || i;
+        }
+        return map;
     },
 
     _getNextMutationTarget: function(M) {

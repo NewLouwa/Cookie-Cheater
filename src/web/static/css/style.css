@@ -514,7 +514,13 @@ button:hover { background: var(--accent); border-color: var(--accent); }
     font-size: 0.6rem;
     font-weight: 600;
     position: relative;
-    overflow: hidden;
+}
+.garden-tile .cc-plant {
+    width: 28px;
+    height: 28px;
+}
+.garden-tile .cc-plant::after {
+    transform: scale(0.58);
 }
 .garden-tile.empty { background: var(--accent2); }
 .garden-tile.planted { background: #1a3a1a; border: 1px solid #2d5a2d; }
@@ -526,8 +532,9 @@ button:hover { background: var(--accent); border-color: var(--accent); }
 .garden-tile .tile-bar {
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    height: 3px;
+    height: 4px;
     background: var(--bg);
+    z-index: 2;
 }
 .garden-tile .tile-bar-fill {
     height: 100%;
