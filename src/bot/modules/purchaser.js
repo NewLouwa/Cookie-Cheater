@@ -8,8 +8,12 @@ CookieCheater.modules.purchaser = {
     _purchaseCooldown: 100,
 
     tick: function() {
-        if (Date.now() - this._lastPurchaseTime < this._purchaseCooldown) return;
-        if (!CookieCheater.throttle("purchaser", 250)) return;
+        // During combos: buy as fast as possible (no cooldown, no throttle)
+        var comboActive = CookieCheater._comboActive;
+        if (!comboActive) {
+            if (Date.now() - this._lastPurchaseTime < this._purchaseCooldown) return;
+            if (!CookieCheater.throttle("purchaser", 250)) return;
+        }
 
         var cookies = Game.cookies;
         var cps = Game.cookiesPs;
@@ -20,11 +24,15 @@ CookieCheater.modules.purchaser = {
             return;
         }
 
-        // === POST-COMBO UPGRADE RUSH ===
-        // After a combo dumps huge cookies, buy ALL affordable upgrades first.
-        // Upgrades are multiplicative — they amplify everything permanently.
-        // Buildings are additive and have diminishing returns.
-        // This is the single biggest optimization: spend combo winnings on upgrades.
+        // === COMBO-AWARE PURCHASING ===
+        // DURING combo: buy BUILDINGS to maximize CPS while multiplier is active
+        //   More CPS × active combo multiplier = more cookies extracted
+        // AFTER combo: buy UPGRADES first (permanent multipliers > additive buildings)
+        //   Upgrades amplify ALL future income; buildings just add a flat amount
+        if (CookieCheater._comboActive) {
+            this._comboBuildingRush(cookies, cps);
+            return;
+        }
         if (this._comboUpgradeRush(cookies, cps)) return;
 
         // === LUCKY BANKING (soft reserve) ===
@@ -139,6 +147,55 @@ CookieCheater.modules.purchaser = {
         if (this._buyAffordableCheapUpgrades(cookies, cps)) return;
 
         this.currentPhase = "waiting";
+    },
+
+    // DURING combo: buy buildings as fast as possible to maximize CPS while multiplier is active.
+    // Every building bought increases CPS, which is multiplied by the combo (x5000+).
+    // Also buy any affordable upgrade that's even better ROI.
+    _comboBuildingRush: function(cookies, cps) {
+        // First: buy any affordable upgrade (upgrades are always better during combo)
+        var KB = CookieCheater.KB;
+        for (var i = 0; i < Game.UpgradesInStore.length; i++) {
+            var u = Game.UpgradesInStore[i];
+            if (u.bought || !u.canBuy()) continue;
+            var analysis = KB ? KB.analyzeUpgrade(u, cps) : null;
+            if (analysis && analysis.skip) continue;
+            u.buy();
+            CookieCheater.stats.upgradesBought++;
+            CookieCheater.justify("purchaser", "COMBO_UPGRADE",
+                "[DURING COMBO] " + u.name + " [" + (analysis ? analysis.category : "?") + "] $" + this._fmt(u.basePrice) +
+                " — upgrading while combo multiplier is active!");
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "COMBO: " + u.name;
+            return;
+        }
+
+        // Then: buy the best building (highest CPS gain per cookie)
+        var bestBuilding = null;
+        var bestCpsPerCost = 0;
+        for (var i = 0; i < Game.ObjectsById.length; i++) {
+            var b = Game.ObjectsById[i];
+            if (b.locked || b.price > cookies) continue;
+            var singleCps = b.storedCps * Game.globalCpsMult;
+            if (singleCps <= 0) singleCps = b.baseCps * Game.globalCpsMult;
+            if (singleCps <= 0) continue;
+            var cpsPerCost = singleCps / b.price;
+            if (cpsPerCost > bestCpsPerCost) {
+                bestCpsPerCost = cpsPerCost;
+                bestBuilding = b;
+            }
+        }
+
+        if (bestBuilding && bestBuilding.price <= cookies) {
+            bestBuilding.buy();
+            CookieCheater.stats.buildingsBought++;
+            CookieCheater.justify("purchaser", "COMBO_BUILDING",
+                "[DURING COMBO] " + bestBuilding.name + " #" + bestBuilding.amount +
+                " $" + this._fmt(bestBuilding.price) +
+                " — maximizing CPS while x" + Math.round(CookieCheater._comboScore || 1) + " multiplier active!");
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "COMBO: " + bestBuilding.name;
+        }
     },
 
     // Post-combo upgrade rush: buy ALL affordable upgrades before any buildings.

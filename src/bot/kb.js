@@ -37,7 +37,7 @@ CookieCheater.KB = {
                 // Floor: doubling ANY building is worth at least 1% of total CPS
                 // because the game recalculates synergies, grandma bonuses, etc.
                 // storedTotalCps only shows direct output, not indirect multiplier effects
-                var floorVal = cps * 0.01;
+                var floorVal = cps * 0.03;
                 return Math.max(directCps, floorVal);
             },
             priority: 1.5,
@@ -135,8 +135,8 @@ CookieCheater.KB = {
                 var pct = match ? parseInt(match[1]) : 1;
                 return cps * pct / 100;
             },
-            priority: 1.0,
-            notes: "Flat CPS percentage boost. Always buy when affordable."
+            priority: 1.3, // Permanent multiplicative boost — more valuable than buildings
+            notes: "Permanent CPS percentage boost. Stacks multiplicatively. Always buy."
         },
 
         // ---- GOLDEN COOKIE UPGRADES ----
