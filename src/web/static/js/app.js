@@ -208,6 +208,31 @@ function initChart() {
 }
 
 // API calls
+let botRunning = true;
+
+async function toggleBot() {
+    const endpoint = botRunning ? '/api/bot/stop' : '/api/bot/start';
+    await fetch(endpoint, { method: 'POST' });
+    botRunning = !botRunning;
+    document.getElementById('btn-startstop').textContent = botRunning ? 'Stop Bot' : 'Start Bot';
+}
+
+async function reinjectBot() {
+    if (!confirm('Re-inject bot? This will reset all module state.')) return;
+    const res = await fetch('/api/bot/reinject', { method: 'POST' });
+    const data = await res.json();
+    botRunning = true;
+    document.getElementById('btn-startstop').textContent = 'Stop Bot';
+}
+
+async function toggleModule(key, enabled) {
+    await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: enabled })
+    });
+}
+
 async function saveGame() {
     const res = await fetch('/api/save', { method: 'POST' });
     const data = await res.json();
@@ -228,8 +253,11 @@ async function refreshActionLog() {
 
         if (Array.isArray(actions) && actions.length > 0) {
             logEl.innerHTML = actions.slice(-50).map(a => {
+                // a.time is unix ms timestamp from JS Date.now()
                 const t = new Date(a.time).toLocaleTimeString();
-                return `<div class="entry"><span class="time">${t}</span><span class="module">[${a.module}]</span> <span class="action">${a.action}</span> ${a.detail || ''}</div>`;
+                const moduleClass = a.module === 'market' ? 'module market' :
+                                    a.module === 'purchaser' ? 'module purchaser' : 'module';
+                return `<div class="entry"><span class="time">${t}</span><span class="${moduleClass}">[${a.module}]</span> <span class="action">${a.action}</span> ${a.detail || ''}</div>`;
             }).join('');
             logEl.scrollTop = logEl.scrollHeight;
         }

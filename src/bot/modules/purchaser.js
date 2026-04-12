@@ -1,22 +1,27 @@
 // Building & Upgrade purchase optimizer
 // Uses payback period (cost / delta_CPS) to find the best next purchase.
-// Accounts for upgrade multipliers and save-for-upgrade logic.
+// Handles all game phases: empty bakery (0 CPS) through endgame.
 
 CookieCheater.modules.purchaser = {
     currentPhase: "scanning",
     _lastPurchaseTime: 0,
-    _purchaseCooldown: 100, // ms between purchases to let the game recalculate
+    _purchaseCooldown: 100,
 
     tick: function() {
-        // Don't buy too fast, let the game settle between purchases
         if (Date.now() - this._lastPurchaseTime < this._purchaseCooldown) return;
-        // Only evaluate every few frames for performance
         if (!CookieCheater.throttle("purchaser", 250)) return;
 
         var cookies = Game.cookies;
         var cps = Game.cookiesPs;
 
-        // Find ALL options: best affordable + best overall (to save for)
+        // === EARLY GAME BOOTSTRAP ===
+        // When CPS is 0 or very low, just buy the cheapest thing available
+        if (cps < 1) {
+            this._earlyGameBuy(cookies);
+            return;
+        }
+
+        // Find ALL options
         var bestUpgrade = this._findBestUpgrade(cookies, cps);
         var buildings = this._rankBuildings(cookies, cps);
         var bestAffordableBuilding = buildings.affordable;
@@ -35,7 +40,7 @@ CookieCheater.modules.purchaser = {
             if (bestUpgrade && bestUpgrade.affordable && bestUpgrade.payback < bestAffordPayback) {
                 bestAffordPayback = bestUpgrade.payback;
             }
-            // Save if: affordable within 60s AND better payback than what we can buy now
+            // Save if: affordable within 60s AND significantly better payback
             if (timeToAfford > 0 && timeToAfford < 60 && c.payback < bestAffordPayback * 0.7) {
                 saveTarget = c;
                 break;
@@ -53,7 +58,7 @@ CookieCheater.modules.purchaser = {
             if (bestUpgrade.payback <= buildingPayback) {
                 bestUpgrade.ref.buy();
                 CookieCheater.stats.upgradesBought++;
-                CookieCheater.log("purchaser", "buy_upgrade", bestUpgrade.name);
+                CookieCheater.log("purchaser", "buy_upgrade", bestUpgrade.name + " ($" + this._fmt(bestUpgrade.price) + ")");
                 this._lastPurchaseTime = Date.now();
                 this.currentPhase = "bought upgrade: " + bestUpgrade.name;
                 return;
@@ -64,20 +69,63 @@ CookieCheater.modules.purchaser = {
         if (bestAffordableBuilding) {
             bestAffordableBuilding.ref.buy();
             CookieCheater.stats.buildingsBought++;
-            CookieCheater.log("purchaser", "buy_building", bestAffordableBuilding.name + " #" + (bestAffordableBuilding.ref.amount));
+            CookieCheater.log("purchaser", "buy_building", bestAffordableBuilding.name + " #" + bestAffordableBuilding.ref.amount + " ($" + this._fmt(bestAffordableBuilding.price) + ")");
             this._lastPurchaseTime = Date.now();
             this.currentPhase = "bought: " + bestAffordableBuilding.name;
             return;
         }
 
         // Fallback: buy any cheap affordable upgrade
-        this._buyAffordableCheapUpgrades(cookies, cps);
+        if (this._buyAffordableCheapUpgrades(cookies, cps)) return;
 
         this.currentPhase = "waiting";
     },
 
+    // Early game: just buy anything affordable, cheapest first
+    _earlyGameBuy: function(cookies) {
+        // Buy cheapest affordable upgrade first (often cursor/grandma upgrades)
+        var cheapestUpgrade = null;
+        for (var i = 0; i < Game.UpgradesInStore.length; i++) {
+            var u = Game.UpgradesInStore[i];
+            if (u.bought || !u.canBuy()) continue;
+            if (!cheapestUpgrade || u.basePrice < cheapestUpgrade.basePrice) {
+                cheapestUpgrade = u;
+            }
+        }
+
+        // Buy cheapest affordable building
+        var cheapestBuilding = null;
+        for (var i = 0; i < Game.ObjectsById.length; i++) {
+            var b = Game.ObjectsById[i];
+            if (b.locked || b.price > cookies) continue;
+            if (!cheapestBuilding || b.price < cheapestBuilding.price) {
+                cheapestBuilding = b;
+            }
+        }
+
+        // Buy whichever is cheaper
+        if (cheapestUpgrade && (!cheapestBuilding || cheapestUpgrade.basePrice < cheapestBuilding.price)) {
+            cheapestUpgrade.buy();
+            CookieCheater.stats.upgradesBought++;
+            CookieCheater.log("purchaser", "early_upgrade", cheapestUpgrade.name);
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "early: " + cheapestUpgrade.name;
+            return;
+        }
+
+        if (cheapestBuilding) {
+            cheapestBuilding.buy();
+            CookieCheater.stats.buildingsBought++;
+            CookieCheater.log("purchaser", "early_building", cheapestBuilding.name + " #" + cheapestBuilding.amount);
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "early: " + cheapestBuilding.name;
+            return;
+        }
+
+        this.currentPhase = "early: clicking...";
+    },
+
     _rankBuildings: function(cookies, cps) {
-        // Returns { overall: best by payback (may not be affordable), affordable: best affordable by payback }
         var bestOverall = null;
         var bestOverallPayback = Infinity;
         var bestAffordable = null;
@@ -112,16 +160,11 @@ CookieCheater.modules.purchaser = {
     },
 
     _milestoneFactor: function(building) {
-        // Building milestones that unlock tiered upgrades: 1, 5, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500
         var milestones = [1, 5, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500];
         var amount = building.amount;
-
         for (var i = 0; i < milestones.length; i++) {
             var m = milestones[i];
-            if (amount < m && amount >= m - 3) {
-                // Within 3 of a milestone: boost priority by 2x
-                return 2.0;
-            }
+            if (amount < m && amount >= m - 3) return 2.0;
         }
         return 1.0;
     },
@@ -135,78 +178,80 @@ CookieCheater.modules.purchaser = {
             if (u.bought) continue;
 
             var price = u.basePrice;
-            var deltaCps = this._estimateUpgradeDeltaCps(u);
+            var deltaCps = this._estimateUpgradeDeltaCps(u, cps);
 
             var payback;
             if (deltaCps > 0) {
                 payback = price / deltaCps;
             } else {
-                // Non-CPS upgrade (clicking, golden cookie, eggs, etc.)
-                // Buy if cheap enough relative to current income
+                // Non-CPS upgrade: buy if cheap enough (scaled by game phase)
+                var phase = CookieCheater.getPhase();
+                var maxMinutes = phase === "early" ? 2 : phase === "mid" ? 5 : 10;
                 var minutesCost = price / Math.max(cps * 60, 0.001);
-                if (minutesCost <= CookieCheater.config.buy_upgrades_under_cps_minutes) {
-                    payback = price / Math.max(cps * 0.1, 0.001); // Treat as 10% CPS boost estimate
+                if (minutesCost <= maxMinutes) {
+                    payback = price / Math.max(cps * 0.1, 0.001);
                 } else {
-                    continue; // Too expensive, skip
+                    continue;
                 }
             }
 
             if (payback < bestPayback) {
                 bestPayback = payback;
-                best = {
-                    ref: u,
-                    name: u.name,
-                    price: price,
-                    payback: payback,
-                    affordable: u.canBuy()
-                };
+                best = { ref: u, name: u.name, price: price, payback: payback, affordable: u.canBuy() };
             }
         }
 
         return best;
     },
 
-    _estimateUpgradeDeltaCps: function(upgrade) {
-        // Try to figure out which building this upgrade boosts
-        // Most tiered upgrades have a building ID in their buildingTie
-        if (upgrade.buildingTie1) {
-            // This upgrade doubles a building's production
+    _estimateUpgradeDeltaCps: function(upgrade, cps) {
+        // Building-tied upgrades (doubles that building's output)
+        if (upgrade.buildingTie1 && upgrade.buildingTie1.storedTotalCps > 0) {
             return upgrade.buildingTie1.storedTotalCps;
         }
-        if (upgrade.buildingTie) {
+        if (upgrade.buildingTie && upgrade.buildingTie.storedTotalCps > 0) {
             return upgrade.buildingTie.storedTotalCps;
         }
 
-        // Check the description for "twice as efficient" pattern
+        // Parse description for "twice as efficient"
         var desc = upgrade.desc || "";
-        for (var i = 0; i < Game.ObjectsById.length; i++) {
-            var b = Game.ObjectsById[i];
-            if (desc.indexOf(b.plural) !== -1 && desc.indexOf("twice") !== -1) {
-                return b.storedTotalCps;
-            }
-            if (desc.indexOf(b.name) !== -1 && desc.indexOf("twice") !== -1) {
-                return b.storedTotalCps;
+        if (desc.indexOf("twice") !== -1) {
+            for (var i = 0; i < Game.ObjectsById.length; i++) {
+                var b = Game.ObjectsById[i];
+                if (b.locked) continue;
+                if ((b.plural && desc.indexOf(b.plural) !== -1) ||
+                    desc.indexOf(b.name) !== -1) {
+                    return b.storedTotalCps;
+                }
             }
         }
 
-        // Synergy upgrades: "+5% CPS per X" - harder to estimate
+        // Synergy upgrades
         if (desc.indexOf("synergy") !== -1 || desc.indexOf("+5%") !== -1) {
-            return Game.cookiesPs * 0.05; // Rough estimate
+            return cps * 0.05;
         }
 
-        // Cookie upgrades: "+X% CPS"
+        // Percentage-based cookie upgrades ("+X%")
         var pctMatch = desc.match(/\+(\d+)%/);
         if (pctMatch) {
-            return Game.cookiesPs * parseInt(pctMatch[1]) / 100;
+            return cps * parseInt(pctMatch[1]) / 100;
         }
 
-        return 0; // Can't estimate, will use fallback logic
+        // Kitten upgrades: huge multiplier based on milk
+        if (desc.indexOf("milk") !== -1 && upgrade.name.indexOf("Kitten") !== -1) {
+            return cps * 0.2; // Rough estimate: ~20% boost
+        }
+
+        return 0;
     },
 
     _buyAffordableCheapUpgrades: function(cookies, cps) {
-        // Buy any affordable upgrade that costs less than 1 minute of CPS
-        // This catches eggs, holiday cookies, and other small upgrades
-        var threshold = cps * 60;
+        // Adaptive threshold: buy upgrades costing less than X seconds of CPS
+        // Early game: 120s, Mid: 60s, Late: 30s
+        var phase = CookieCheater.getPhase();
+        var seconds = phase === "early" ? 120 : phase === "mid" ? 60 : 30;
+        var threshold = cps * seconds;
+
         for (var i = 0; i < Game.UpgradesInStore.length; i++) {
             var u = Game.UpgradesInStore[i];
             if (u.bought || !u.canBuy()) continue;
@@ -215,8 +260,17 @@ CookieCheater.modules.purchaser = {
                 CookieCheater.stats.upgradesBought++;
                 CookieCheater.log("purchaser", "buy_cheap_upgrade", u.name);
                 this._lastPurchaseTime = Date.now();
-                return;
+                return true;
             }
         }
+        return false;
+    },
+
+    _fmt: function(n) {
+        if (n < 1e6) return n.toFixed(0);
+        if (n < 1e9) return (n / 1e6).toFixed(1) + "M";
+        if (n < 1e12) return (n / 1e9).toFixed(1) + "B";
+        if (n < 1e15) return (n / 1e12).toFixed(1) + "T";
+        return n.toExponential(1);
     }
 };

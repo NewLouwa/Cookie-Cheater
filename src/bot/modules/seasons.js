@@ -1,92 +1,94 @@
 // Season cycling for collecting all seasonal upgrades
-// Cycles through: Christmas > Easter > Halloween > Valentine to unlock everything.
-// Once all seasonal upgrades are collected, stays on no season or Christmas.
+// Cycles through: Christmas > Halloween > Easter > Valentine to unlock everything.
+// Once all collected, stays on no season (or Christmas for reindeer).
+//
+// How seasonal drops work:
+// - Christmas: buy Santa upgrades (appear in store), reindeer drop cookies
+// - Halloween: wrinklers drop Halloween cookies when popped
+// - Easter: golden cookies and wrinklers drop eggs
+// - Valentine: heart biscuits appear in the store
 
 CookieCheater.modules.seasons = {
-    // Season upgrade IDs (the "Season switcher" upgrades)
     _seasonUpgrades: {
         christmas: "Christmas season",
         easter: "Easter season",
         halloween: "Halloween season",
         valentines: "Valentines season",
-        fools: "Business season",
     },
 
-    // Track which seasons are fully collected
     _seasonOrder: ["christmas", "halloween", "easter", "valentines"],
-    _currentTarget: 0,
+    _checkCache: {},       // Cache results to avoid scanning 700+ upgrades every tick
+    _cacheExpiry: 60000,   // Refresh cache every 60s
 
     tick: function() {
         if (!CookieCheater.config.auto_season_cycle) return;
         if (!CookieCheater.throttle("seasons", 10000)) return;
 
-        // Check if Season switcher is available (heavenly upgrade)
+        // Need Season switcher heavenly upgrade
         var switcher = Game.Upgrades["Season switcher"];
         if (!switcher || !switcher.bought) return;
 
-        // Check which seasons still have uncollected upgrades
         var incomplete = this._findIncompleteSeason();
-        if (!incomplete) {
-            // All collected! Stay on no season for efficiency
-            return;
-        }
+        if (!incomplete) return;
 
-        // If we're already in the right season, nothing to do
         if (Game.season === incomplete) return;
 
-        // Switch to the incomplete season
+        // Switch season
         var switchUpgrade = Game.Upgrades[this._seasonUpgrades[incomplete]];
-        if (switchUpgrade && switchUpgrade.canBuy()) {
+        if (switchUpgrade && !switchUpgrade.bought && switchUpgrade.canBuy()) {
             switchUpgrade.buy();
             CookieCheater.log("seasons", "switch", "Switched to " + incomplete);
         }
     },
 
     _findIncompleteSeason: function() {
-        // Check each season for uncollected upgrades
         for (var i = 0; i < this._seasonOrder.length; i++) {
             var season = this._seasonOrder[i];
-            if (this._hasUnlockedAll(season)) continue;
-            return season;
+            if (!this._isComplete(season)) return season;
         }
         return null;
     },
 
-    _hasUnlockedAll: function(season) {
-        // Check if all upgrades for a season are bought
-        // The game tracks these via upgrade pools
-        var count = 0;
-        var total = 0;
-
-        for (var i = 0; i < Game.UpgradesById.length; i++) {
-            var u = Game.UpgradesById[i];
-            if (!u.pool) continue;
-
-            var isMatch = false;
-            if (season === "christmas" && (u.pool === "cookie" && u.name.indexOf("Christmas") !== -1)) isMatch = true;
-            if (season === "easter" && u.pool === "easter") isMatch = true;
-            if (season === "halloween" && u.pool === "halloween") isMatch = true;
-            if (season === "valentines" && u.pool === "valentines") isMatch = true;
-
-            if (isMatch) {
-                total++;
-                if (u.bought) count++;
-            }
+    _isComplete: function(season) {
+        // Check cache first
+        var cached = this._checkCache[season];
+        if (cached && Date.now() - cached.time < this._cacheExpiry) {
+            return cached.complete;
         }
 
-        // If we found seasonal upgrades and all are bought
-        if (total > 0 && count >= total) return true;
+        var complete = this._checkSeasonComplete(season);
+        this._checkCache[season] = { complete: complete, time: Date.now() };
+        return complete;
+    },
 
-        // Fallback: check Game.season achievements/counters
-        // Christmas: 7 reindeer cookies + 7 Santa upgrades
-        // Easter: 20 eggs
-        // Halloween: 7 halloween cookies
-        // Valentine: 6 heart cookies
-        if (season === "christmas") return Game.Has("Season's greetings") ? true : false;
-        if (season === "easter") return Game.Has("Egged on") ? true : false;
-        if (season === "halloween") return Game.Has("Spooky cookies") ? true : false;
-        if (season === "valentines") return Game.Has("Lovely cookies") ? true : false;
-
+    _checkSeasonComplete: function(season) {
+        // Use achievement checks as primary method (most reliable)
+        switch (season) {
+            case "christmas":
+                // "Let it snow" = got all Christmas cookies; also check Santa upgrades
+                if (Game.Has("Let it snow")) return true;
+                // Fallback: count Christmas cookies in store
+                var santaLevel = Game.santaLevel || 0;
+                return santaLevel >= 14; // Max Santa level
+            case "halloween":
+                if (Game.Has("Spooky cookies")) return true;
+                return this._countPool("halloween") >= 7;
+            case "easter":
+                if (Game.Has("Egged on")) return true;
+                return this._countPool("easter") >= 20;
+            case "valentines":
+                if (Game.Has("Lovely cookies")) return true;
+                return this._countPool("valentines") >= 6;
+        }
         return false;
+    },
+
+    _countPool: function(pool) {
+        var bought = 0;
+        for (var i = 0; i < Game.UpgradesById.length; i++) {
+            var u = Game.UpgradesById[i];
+            if (u.pool === pool && u.bought) bought++;
+        }
+        return bought;
     }
 };

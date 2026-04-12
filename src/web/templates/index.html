@@ -143,10 +143,25 @@
 
             <!-- Controls -->
             <div class="card">
-                <h2>Controls</h2>
+                <h2>Bot Controls</h2>
                 <div class="controls">
+                    <button id="btn-startstop" onclick="toggleBot()">Stop Bot</button>
+                    <button onclick="reinjectBot()">Re-inject Bot</button>
                     <button onclick="saveGame()">Save Game</button>
                     <button onclick="triggerAscend()" class="btn-warn">Ascend</button>
+                </div>
+                <h3 style="margin-top:1rem; font-size:0.85rem; color:var(--dim)">Module Toggles</h3>
+                <div class="controls" style="margin-top:0.5rem">
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_click', this.checked)"> Clicker</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_pop_golden', this.checked)"> Golden Cookies</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('market_enabled', this.checked)"> Market</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('garden_enabled', this.checked)"> Garden</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('grimoire_enabled', this.checked)"> Grimoire</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pantheon_enabled', this.checked)"> Pantheon</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('dragon_enabled', this.checked)"> Dragon</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_season_cycle', this.checked)"> Seasons</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('pop_wrinklers', this.checked)"> Wrinklers</label>
+                    <label class="toggle"><input type="checkbox" checked onchange="toggleModule('auto_harvest_lumps', this.checked)"> Sugar Lumps</label>
                 </div>
             </div>
         </div>

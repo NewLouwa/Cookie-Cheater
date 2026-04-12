@@ -16,6 +16,7 @@
 CookieCheater.modules.market = {
     // Track our average buy prices to ensure we only sell at profit
     _positions: {}, // { goodId: { qty: N, totalCost: X } }
+    _initialized: false,
 
     tick: function() {
         if (!CookieCheater.config.market_enabled) return;
@@ -23,6 +24,13 @@ CookieCheater.modules.market = {
 
         var bank = Game.ObjectsById[5];
         if (!bank || !bank.minigame) return;
+
+        // On first tick, rebuild positions from game state
+        // This handles page reload / re-injection gracefully
+        if (!this._initialized) {
+            this._rebuildPositions(bank.minigame);
+            this._initialized = true;
+        }
         var M = bank.minigame;
 
         var brokers = M.brokers || 0;
@@ -373,6 +381,22 @@ CookieCheater.modules.market = {
                 );
             }
         } catch(e) {}
+    },
+
+    _rebuildPositions: function(M) {
+        // Reconstruct position tracking from game state after page reload.
+        // We don't know the exact buy price, so estimate from current value.
+        // This means the first sell after reload might be slightly off,
+        // but it's better than having no position data at all.
+        for (var i = 0; i < M.goodsById.length; i++) {
+            var g = M.goodsById[i];
+            if (g.stock > 0 && !this._positions[g.id]) {
+                // Assume we bought near current price (conservative estimate)
+                var estimatedCost = g.val * g.stock * 1.1; // Add 10% margin of safety
+                this._positions[g.id] = { qty: g.stock, totalCost: estimatedCost };
+                CookieCheater.log("market", "rebuild", g.symbol + " x" + g.stock + " (estimated avg $" + (estimatedCost / g.stock).toFixed(2) + ")");
+            }
+        }
     },
 
     _restingValue: function(goodId, bankLevel) {

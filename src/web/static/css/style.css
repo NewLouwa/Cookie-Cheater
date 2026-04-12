@@ -201,6 +201,19 @@ button:hover { background: var(--accent); }
 .ratio-warn { color: #fbbf24; }
 .ratio-danger { color: #f87171; font-weight: 700; }
 
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    background: var(--accent2);
+    border-radius: 0.25rem;
+}
+
+.toggle input { accent-color: var(--accent); cursor: pointer; }
+
 @media (max-width: 900px) {
     .grid { grid-template-columns: 1fr; }
     .chart-card, .buildings-card, .log-card { grid-column: span 1; }

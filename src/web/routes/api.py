@@ -70,3 +70,41 @@ async def trigger_ascend(request: Request):
     bridge = request.app.state.game_bridge
     bridge.trigger_ascension()
     return {"status": "ascending"}
+
+
+@router.post("/bot/stop")
+async def stop_bot(request: Request):
+    """Stop the bot (set running=false, clear modules)."""
+    bridge = request.app.state.game_bridge
+    bridge.connection.evaluate_js("CookieCheater.running = false; 'stopped'")
+    return {"status": "stopped"}
+
+
+@router.post("/bot/start")
+async def start_bot(request: Request):
+    """Resume the bot."""
+    bridge = request.app.state.game_bridge
+    bridge.connection.evaluate_js("CookieCheater.running = true; 'started'")
+    return {"status": "started"}
+
+
+@router.post("/bot/reinject")
+async def reinject_bot(request: Request):
+    """Re-inject the bot (useful after page reload)."""
+    from ...bot.assembler import assemble_bot
+    bridge = request.app.state.game_bridge
+    service = request.app.state.game_service
+    # Kill old bot first
+    bridge.connection.evaluate_js("""
+        if (window.CookieCheater) {
+            CookieCheater.running = false;
+            CookieCheater.modules = {};
+        }
+        delete window.CookieCheater;
+        'cleared'
+    """)
+    import time
+    time.sleep(0.3)
+    js_code = assemble_bot(service.config.to_dict())
+    bridge.inject_bot(js_code)
+    return {"status": "reinjected"}
