@@ -115,7 +115,8 @@ CookieCheater.modules.garden = {
                 var plant = M.plantsById[plantId];
                 try {
                     var cost = M.getCost(plant);
-                    if (cost > Game.cookies * 0.02) continue;
+                    // canPlant checks cookies >= cost. If we can't afford it, skip.
+                    if (!M.canPlant(plant)) continue;
                     M.useTool(plantId, x, y);
                     planted++;
                 } catch(e) {
@@ -164,7 +165,8 @@ CookieCheater.modules.garden = {
                 var seed = ((x + y) % 2 === 0) ? seedA : seedB;
                 try {
                     var cost = M.getCost(M.plantsById[seed]);
-                    if (cost > Game.cookies * 0.02) continue;
+                    // canPlant checks cookies >= cost. If we can't afford it, skip.
+                    if (!M.canPlant(plant)) continue;
                     M.useTool(seed, x, y);
                     planted++;
                 } catch(e) {
@@ -193,7 +195,7 @@ CookieCheater.modules.garden = {
 
             try {
                 var cost = M.getCost(M.plantsById[qId]);
-                if (cost > Game.cookies * 0.03) continue;
+                if (!M.canPlant(M.plantsById[qId])) continue;
                 M.useTool(qId, x, y);
                 planted++;
             } catch(e) {}
