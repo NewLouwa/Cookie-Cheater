@@ -170,18 +170,18 @@ CookieCheater.modules.purchaser = {
             return;
         }
 
-        // Then: buy the best building (highest CPS gain per cookie)
+        // Then: buy the building with best payback (uses Cookie Monster formula)
         var bestBuilding = null;
-        var bestCpsPerCost = 0;
+        var bestPayback = Infinity;
         for (var i = 0; i < Game.ObjectsById.length; i++) {
             var b = Game.ObjectsById[i];
             if (b.locked || b.price > cookies) continue;
             var singleCps = b.storedCps * Game.globalCpsMult;
             if (singleCps <= 0) singleCps = b.baseCps * Game.globalCpsMult;
             if (singleCps <= 0) continue;
-            var cpsPerCost = singleCps / b.price;
-            if (cpsPerCost > bestCpsPerCost) {
-                bestCpsPerCost = cpsPerCost;
+            var payback = this._opportunityCostPayback(b.price, singleCps, cookies, cps);
+            if (payback < bestPayback) {
+                bestPayback = payback;
                 bestBuilding = b;
             }
         }

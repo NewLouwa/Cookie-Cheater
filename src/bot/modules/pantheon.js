@@ -110,39 +110,60 @@ CookieCheater.modules.pantheon = {
     },
 
     _sellForGodzamok: function() {
-        var targets = CookieCheater.KB && CookieCheater.KB.combos
-            ? CookieCheater.KB.combos.godzamokTargets
-            : [0, 2, 3, 4];
-        var safe = CookieCheater.KB && CookieCheater.KB.combos
-            ? CookieCheater.KB.combos.godzamokSafe
-            : [7];
+        // Only sell buildings that are CHEAP to rebuy.
+        // Selling 200 Cursors at $5T each = $1Q to rebuy. If the combo
+        // doesn't earn $1Q, we lose money. Only sell buildings whose
+        // TOTAL rebuy cost < 10% of current cookies.
+        var safe = [7]; // Never sell Wizard Towers (need magic)
 
         var totalSold = 0;
         var soldDetails = [];
+        var cookies = Game.cookies;
 
-        for (var t = 0; t < targets.length; t++) {
-            if (safe.indexOf(targets[t]) !== -1) continue;
-            var b = Game.ObjectsById[targets[t]];
-            if (!b || b.amount < 10) continue;
+        // Find buildings cheap enough to sell and rebuy
+        for (var i = 0; i < Game.ObjectsById.length; i++) {
+            if (safe.indexOf(i) !== -1) continue;
+            var b = Game.ObjectsById[i];
+            if (!b || b.locked || b.amount < 10) continue;
 
-            var sellCount = Math.min(b.amount - 1, 200);
-            if (sellCount <= 0) continue;
+            // Check rebuy cost: selling N buildings then rebuying costs ~N * current_price
+            // (price increases 15% per building, so rebuying is MORE expensive)
+            // Only sell if rebuy cost for 50 buildings < 5% of bank
+            var rebuyCost = 0;
+            var price = b.price;
+            var sellCount = Math.min(b.amount - 1, 50); // Cap at 50 per building type
+            // Estimate rebuy cost (price * (1 + 1.15 + 1.15^2 + ... + 1.15^(n-1)))
+            for (var j = 0; j < sellCount; j++) {
+                rebuyCost += price * Math.pow(1.15, j);
+            }
 
-            // Sell in bulk (game handles the loop internally)
+            if (rebuyCost > cookies * 0.05) {
+                // Too expensive to rebuy — try fewer
+                sellCount = 0;
+                rebuyCost = 0;
+                for (var j = 0; j < Math.min(b.amount - 1, 200); j++) {
+                    var nextCost = price * Math.pow(1.15, j);
+                    if (rebuyCost + nextCost > cookies * 0.05) break;
+                    rebuyCost += nextCost;
+                    sellCount = j + 1;
+                }
+            }
+
+            if (sellCount < 5) continue; // Not worth the hassle
+
             b.sell(sellCount);
             totalSold += sellCount;
             soldDetails.push(b.name + " x" + sellCount);
 
-            // Rebuy after 12s — bulk buy in one call
+            // Rebuy after 12s
             (function(buildingId, count) {
                 setTimeout(function() {
                     var rb = Game.ObjectsById[buildingId];
-                    // buy(amount) loops internally, no need for our own loop
                     rb.buy(count);
                     CookieCheater.justify("pantheon", "REBUY",
                         rb.name + " x" + count + " bulk rebuilt after combo");
                 }, 12000);
-            })(targets[t], sellCount);
+            })(i, sellCount);
         }
 
         if (totalSold > 0) {

@@ -18,7 +18,12 @@ CookieCheater.modules.clicker = {
         if (!CookieCheater.config.auto_click) return;
 
         var combo = this._detectCombo();
-        this._comboActive = combo.score > 1;
+
+        // COMBO = multiple buff types stacking, NOT just Frenzy alone
+        // Frenzy (x7) alone is NOT a combo — it's normal gameplay
+        // Real combo = CPS buff + Click buff (Frenzy + Click Frenzy = x5439)
+        // OR extremely high CPS mult (Elder Frenzy x666)
+        this._comboActive = (combo.hasClickBuff && combo.hasCpsBuff) || combo.cpsMult >= 100;
 
         // Expose combo state for other modules (Godzamok, etc.)
         CookieCheater._comboActive = this._comboActive;
