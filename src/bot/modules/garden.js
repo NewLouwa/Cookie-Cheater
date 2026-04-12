@@ -188,9 +188,34 @@ CookieCheater.modules.garden = {
             }
         }
 
-        // Tag existing plants that are already correct parents
         var parentName1 = target.mut.parents[0];
         var parentName2 = target.mut.parents[1];
+
+        // First pass: check if ALL tiles are full (no room for mutations)
+        var emptyCount = 0;
+        for (var i = 0; i < allTiles.length; i++) {
+            if (M.plot[allTiles[i].y][allTiles[i].x][0] === 0) emptyCount++;
+        }
+
+        // If no empty tiles, harvest some plants to make room for mutations
+        if (emptyCount === 0 && allTiles.length >= 4) {
+            var harvested = 0;
+            for (var i = 0; i < allTiles.length; i++) {
+                var t = allTiles[i];
+                // Harvest every 3rd tile to create mutation targets
+                var pos = (t.x - allTiles[0].x) + (t.y - allTiles[0].y) * 3;
+                if (pos % 3 === 1) { // Same pattern as "empty" below
+                    M.harvest(t.x, t.y);
+                    harvested++;
+                }
+            }
+            if (harvested > 0) {
+                CookieCheater.justify("garden", "CLEAR_FOR_MUTATION",
+                    "Harvested " + harvested + " plants to make room for " + target.mut.child + " mutations");
+            }
+        }
+
+        // Tag existing plants that are correct parents
         for (var i = 0; i < allTiles.length; i++) {
             var t = allTiles[i];
             var tile = M.plot[t.y][t.x];
@@ -233,25 +258,20 @@ CookieCheater.modules.garden = {
             // Row pattern: A _ B _ A _ (for 6-wide) or A B _ (for 3-wide)
             // This guarantees empty tiles are sandwiched between A and B rows
 
-            // Strategy: assign each tile a role based on position
+            // Strategy: plant parents with GAPS for mutations to appear
+            // Rule: at least 1/3 of tiles must be empty targets
+            // Each empty tile must be adjacent to at least one A and one B
             for (var i = 0; i < allTiles.length; i++) {
                 var t = allTiles[i];
                 if (M.plot[t.y][t.x][0] > 0) continue;
 
-                // Alternate: even x = parent A, odd x = parent B, special tiles = empty target
-                // But we need at least some empty tiles. Use: plant 2 of each, leave rest empty.
-                var tileIndex = i;
+                // Use modulo 3 pattern for ALL grid sizes
+                // This guarantees 1/3 empty, 1/3 parent A, 1/3 parent B
+                var pos = (t.x - allTiles[0].x) + (t.y - allTiles[0].y) * 3;
                 var role;
-                if (allTiles.length <= 6) {
-                    // Small grid (2x2 to 3x2): plant A and B alternating, every tile either parent or target
-                    role = (t.x + t.y) % 2 === 0 ? "A" : "B";
-                } else {
-                    // Larger grid: every 3rd tile is empty target
-                    var pos = t.x + t.y * 6;
-                    if (pos % 3 === 0) role = "A";
-                    else if (pos % 3 === 1) role = "B";
-                    else role = "empty";
-                }
+                if (pos % 3 === 0) role = "A";
+                else if (pos % 3 === 1) role = "empty"; // EMPTY in the middle!
+                else role = "B";
 
                 if (role === "A") {
                     if (this._tryPlant(M, target.id1, t.x, t.y)) {
