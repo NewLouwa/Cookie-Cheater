@@ -5,7 +5,7 @@
 //
 // MUTATION RULES (from wiki):
 // - Mutations check ALL 8 neighbors (orthogonal + diagonal) in 3x3 around empty tile
-// - Both parents must be MATURE (age >= plant.mature * 100)
+// - Both parents must be MATURE (age >= plant.mature, where mature is 0-100)
 // - Same species can be both parents (e.g. 2x Baker's Wheat -> Thumbcorn 5%)
 // - Chance is per empty tile per tick, multiplied by soil (Wood Chips = 3x)
 // - New plant appears in the empty tile adjacent to BOTH parents
@@ -65,8 +65,8 @@ CookieCheater.modules.garden = {
                     info.plant = plant ? plant.name : "?";
                     info.plantIcon = plant ? (plant.icon || 0) : 0;
                     info.age = tile[1];
-                    info.mature = plant ? (tile[1] >= (plant.mature || 0.5) * 100) : false;
-                    info.matureAge = plant ? Math.round((plant.mature || 0.5) * 100) : 50;
+                    info.mature = plant ? (tile[1] >= (plant.mature || 50)) : false;
+                    info.matureAge = plant ? Math.round((plant.mature || 50)) : 50;
                     info.pct = Math.round(tile[1]);
                 }
                 var key = x + "," + y;
@@ -105,7 +105,7 @@ CookieCheater.modules.garden = {
                 var plant = M.plantsById[tile[0] - 1];
                 if (!plant) continue;
                 var age = tile[1];
-                var matureAge = (plant.mature || 0.5) * 100;
+                var matureAge = (plant.mature || 50);
 
                 // NEVER harvest mutation parents before they're done (let them stay mature for mutation ticks)
                 var key = x + "," + y;
@@ -477,7 +477,7 @@ CookieCheater.modules.garden = {
                         var tx = parseInt(parts[0]), ty = parseInt(parts[1]);
                         if (M.plot[ty] && M.plot[ty][tx] && M.plot[ty][tx][0] > 0) {
                             var plant = M.plantsById[M.plot[ty][tx][0] - 1];
-                            if (plant && M.plot[ty][tx][1] >= (plant.mature || 0.5) * 100) matureRing++;
+                            if (plant && M.plot[ty][tx][1] >= (plant.mature || 50)) matureRing++;
                         }
                     }
                 }
