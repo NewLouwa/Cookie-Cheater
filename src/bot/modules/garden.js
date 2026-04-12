@@ -176,74 +176,96 @@ CookieCheater.modules.garden = {
             return;
         }
 
-        // Plan the mutation layout:
-        // For same-parent mutations (2x Baker's Wheat): fill everything, empty tiles mutate
-        // For different parents: checkerboard pattern so every empty tile is adjacent to both
+        // Plan the mutation layout based on grid size and parent types
         var sameSeed = (target.id1 === target.id2);
+        this._tileGoals = {};
 
-        this._tileGoals = {}; // Reset goals
+        // Get all unlocked tiles
+        var allTiles = [];
+        for (var y = 0; y < 6; y++) {
+            for (var x = 0; x < 6; x++) {
+                if (M.isTileUnlocked(x, y)) allTiles.push({x: x, y: y});
+            }
+        }
 
-        var emptyTiles = this._getEmptyUnlockedTiles(M);
+        // Tag existing plants that are already correct parents
+        var parentName1 = target.mut.parents[0];
+        var parentName2 = target.mut.parents[1];
+        for (var i = 0; i < allTiles.length; i++) {
+            var t = allTiles[i];
+            var tile = M.plot[t.y][t.x];
+            if (tile[0] > 0) {
+                var plant = M.plantsById[tile[0] - 1];
+                if (plant && (plant.name === parentName1 || plant.name === parentName2)) {
+                    this._tileGoals[t.x + "," + t.y] = {
+                        goal: "mutation_parent",
+                        seed: plant.name,
+                        targetChild: target.mut.child
+                    };
+                }
+            }
+        }
+
+        // For SAME parent (e.g. 2x wheat): checkerboard, leave gaps for mutations
+        // For DIFFERENT parents: interleave A-B, ensure empty tiles touch both
         var planted = 0;
 
         if (sameSeed) {
-            // Same parent: fill all tiles. Mutations happen when 2+ mature neighbors exist.
-            // Leave some tiles empty for mutations to appear in.
-            // Pattern: plant in every other tile (checkerboard), leave gaps for children
-            for (var y = 0; y < 6; y++) {
-                for (var x = 0; x < 6; x++) {
-                    if (!M.isTileUnlocked(x, y)) continue;
-                    if (M.plot[y][x][0] > 0) continue;
+            // Checkerboard: plant on even (x+y), leave odd for mutations
+            for (var i = 0; i < allTiles.length; i++) {
+                var t = allTiles[i];
+                if (M.plot[t.y][t.x][0] > 0) continue; // Already has something
 
-                    // Checkerboard: plant on even tiles, leave odd tiles for mutations
-                    if ((x + y) % 2 === 0) {
-                        if (this._tryPlant(M, target.id1, x, y)) {
-                            this._tileGoals[x + "," + y] = {
-                                goal: "mutation_parent",
-                                seed: target.mut.parents[0],
-                                targetChild: target.mut.child
-                            };
-                            planted++;
-                        }
-                    } else {
-                        // Mark empty tile as mutation target
-                        this._tileGoals[x + "," + y] = {
-                            goal: "mutation_target",
-                            seed: null,
-                            targetChild: target.mut.child
-                        };
+                if ((t.x + t.y) % 2 === 0) {
+                    if (this._tryPlant(M, target.id1, t.x, t.y)) {
+                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName1, targetChild: target.mut.child };
+                        planted++;
                     }
-                    if (planted >= 10) break;
+                } else {
+                    this._tileGoals[t.x + "," + t.y] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
                 }
-                if (planted >= 10) break;
             }
         } else {
-            // Different parents: alternate A-B in checkerboard
-            // Every empty adjacent tile will be next to at least one A and one B
-            for (var y = 0; y < 6; y++) {
-                for (var x = 0; x < 6; x++) {
-                    if (!M.isTileUnlocked(x, y)) continue;
-                    if (M.plot[y][x][0] > 0) continue;
+            // Different parents: for small grids, use explicit optimal pattern
+            // Goal: every empty tile must be adjacent to at least 1 of parent A AND 1 of parent B
+            //
+            // For any grid: alternate rows of A and B, leaving middle row empty
+            // Row pattern: A _ B _ A _ (for 6-wide) or A B _ (for 3-wide)
+            // This guarantees empty tiles are sandwiched between A and B rows
 
-                    // Plant A on even positions, B on odd, leave some gaps
-                    var totalPos = x + y;
-                    if (totalPos % 3 === 0) {
-                        if (this._tryPlant(M, target.id1, x, y)) {
-                            this._tileGoals[x + "," + y] = { goal: "mutation_parent", seed: target.mut.parents[0], targetChild: target.mut.child };
-                            planted++;
-                        }
-                    } else if (totalPos % 3 === 1) {
-                        if (this._tryPlant(M, target.id2, x, y)) {
-                            this._tileGoals[x + "," + y] = { goal: "mutation_parent", seed: target.mut.parents[1], targetChild: target.mut.child };
-                            planted++;
-                        }
-                    } else {
-                        // Mutation target tile
-                        this._tileGoals[x + "," + y] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
-                    }
-                    if (planted >= 8) break;
+            // Strategy: assign each tile a role based on position
+            for (var i = 0; i < allTiles.length; i++) {
+                var t = allTiles[i];
+                if (M.plot[t.y][t.x][0] > 0) continue;
+
+                // Alternate: even x = parent A, odd x = parent B, special tiles = empty target
+                // But we need at least some empty tiles. Use: plant 2 of each, leave rest empty.
+                var tileIndex = i;
+                var role;
+                if (allTiles.length <= 6) {
+                    // Small grid (2x2 to 3x2): plant A and B alternating, every tile either parent or target
+                    role = (t.x + t.y) % 2 === 0 ? "A" : "B";
+                } else {
+                    // Larger grid: every 3rd tile is empty target
+                    var pos = t.x + t.y * 6;
+                    if (pos % 3 === 0) role = "A";
+                    else if (pos % 3 === 1) role = "B";
+                    else role = "empty";
                 }
-                if (planted >= 8) break;
+
+                if (role === "A") {
+                    if (this._tryPlant(M, target.id1, t.x, t.y)) {
+                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName1, targetChild: target.mut.child };
+                        planted++;
+                    }
+                } else if (role === "B") {
+                    if (this._tryPlant(M, target.id2, t.x, t.y)) {
+                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName2, targetChild: target.mut.child };
+                        planted++;
+                    }
+                } else {
+                    this._tileGoals[t.x + "," + t.y] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
+                }
             }
         }
 

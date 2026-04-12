@@ -601,21 +601,27 @@ CookieCheater.KB = {
             6: [5,4], 7: [5,5], 8: [6,5], 9: [6,6]
         },
 
-        // Mutation recipes: [parent1, parent2, chance]
-        // Key mutations to pursue in order
+        // Mutation recipes from actual game source (getMuts function)
+        // matureReq: true = both parents must be MATURE (neighsM check)
+        //            false = parent can be any age (neighs check, e.g. brown mold)
+        // Key: pursue these in order for optimal progression
         mutationPath: [
-            { parents: ["Baker's wheat", "Baker's wheat"], child: "Thumbcorn", chance: 0.05 },
-            { parents: ["Baker's wheat", "Thumbcorn"], child: "Cronerice", chance: 0.01 },
-            { parents: ["Cronerice", "Thumbcorn"], child: "Gildmillet", chance: 0.03 },
-            { parents: ["Baker's wheat", "Gildmillet"], child: "Ordinary clover", chance: 0.03 },
-            { parents: ["Ordinary clover", "Gildmillet"], child: "Shimmerlily", chance: 0.02 },
-            { parents: ["Baker's wheat", "Baker's wheat"], child: "Bakeberry", chance: 0.001 },
-            { parents: ["Baker's wheat", "Brown mold"], child: "Chocoroot", chance: 0.10 },
-            { parents: ["Chocoroot", "White mildew"], child: "White chocoroot", chance: 0.10 },
-            { parents: ["Shimmerlily", "White chocoroot"], child: "Whiskerbloom", chance: 0.01 },
-            { parents: ["Shimmerlily", "Cronerice"], child: "Elderwort", chance: 0.01 },
-            { parents: ["Bakeberry", "Chocoroot"], child: "Queenbeet", chance: 0.01 },
-            { parents: ["Queenbeet", "Queenbeet"], child: "Duketater", chance: 0.001 },
+            // Phase 1: Basic seeds from wheat
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Thumbcorn", chance: 0.05, matureReq: true },
+            // Phase 2: Build the chain
+            { parents: ["Baker's wheat", "Thumbcorn"], child: "Cronerice", chance: 0.01, matureReq: true },
+            { parents: ["Cronerice", "Thumbcorn"], child: "Gildmillet", chance: 0.03, matureReq: true },
+            { parents: ["Baker's wheat", "Gildmillet"], child: "Ordinary clover", chance: 0.03, matureReq: true },
+            { parents: ["Ordinary clover", "Gildmillet"], child: "Shimmerlily", chance: 0.02, matureReq: true },
+            // Phase 3: High value plants
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Bakeberry", chance: 0.001, matureReq: true },
+            { parents: ["Baker's wheat", "Brown mold"], child: "Chocoroot", chance: 0.10, matureReq: [true, false] }, // wheat=mature, mold=any age!
+            { parents: ["Chocoroot", "White mildew"], child: "White chocoroot", chance: 0.10, matureReq: [true, false] }, // chocoroot=mature, mildew=any
+            { parents: ["Shimmerlily", "White chocoroot"], child: "Whiskerbloom", chance: 0.01, matureReq: true },
+            { parents: ["Shimmerlily", "Cronerice"], child: "Elderwort", chance: 0.01, matureReq: true },
+            // Phase 4: Queenbeet line
+            { parents: ["Bakeberry", "Chocoroot"], child: "Queenbeet", chance: 0.01, matureReq: true },
+            { parents: ["Queenbeet", "Queenbeet"], child: "Duketater", chance: 0.001, matureReq: true },
         ],
 
         // Plants to harvest for permanent upgrades (name -> upgrade drop chance)
