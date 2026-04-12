@@ -58,7 +58,14 @@ function updateDashboard(data) {
     // Top metrics
     document.getElementById('cookies').textContent = formatNumber(data.cookies);
     document.getElementById('cps').textContent = formatNumber(data.cps) + '/s';
-    document.getElementById('prestige').textContent = formatNumber(data.prestige);
+    // Prestige: show current + potential if not ascended yet
+    const prestige = data.prestige || 0;
+    const potentialPrestige = data.cookiesEarned ? Math.floor(Math.pow(data.cookiesEarned / 1e12, 1/3)) : 0;
+    if (prestige === 0 && potentialPrestige > 0) {
+        document.getElementById('prestige').innerHTML = `0 <span class="dim" style="font-size:0.7rem">(+${potentialPrestige})</span>`;
+    } else {
+        document.getElementById('prestige').textContent = formatNumber(prestige);
+    }
     document.getElementById('heavenly-chips').textContent = formatNumber(data.heavenlyChips);
     document.getElementById('lumps').textContent = data.lumps || 0;
     document.getElementById('season').textContent = data.season || 'none';
