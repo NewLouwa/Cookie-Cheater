@@ -125,6 +125,36 @@ CookieCheater.modules.strategist = {
         var cps = S.cps;
         var cookies = S.cookies;
 
+        // --- Active combo opportunity ---
+        if (S.buffs.hasFrenzy && !S.buffs.hasClickFrenzy) {
+            var hasMagic = false;
+            var tower = Game.ObjectsById[7];
+            if (tower && tower.minigame) {
+                var M = tower.minigame;
+                hasMagic = M.magic >= M.magicM * 0.6;
+            }
+            priorities.push({
+                id: "combo_opportunity",
+                label: "COMBO: Cast FtHoF NOW!",
+                urgency: "critical",
+                progress: -1,
+                reason: "Frenzy active (x" + S.buffs.cpsMult + ")! " +
+                    (hasMagic ? "Grimoire has enough magic — casting FtHoF for Click Frenzy combo (x5,439+ per click)!"
+                              : "Grimoire needs more magic. Waiting for natural Click Frenzy.")
+            });
+        }
+
+        if (S.buffs.isCombo) {
+            priorities.push({
+                id: "combo_active",
+                label: "COMBO ACTIVE! x" + this._fmt(S.buffs.comboMultiplier),
+                urgency: "critical",
+                progress: -1,
+                reason: "Burst-clicking! Godzamok selling buildings for extra click power. Every click = " +
+                    this._fmt(Game.computedMouseCps * S.buffs.comboMultiplier) + " cookies."
+            });
+        }
+
         // --- Lucky bank ---
         if (S.luckyBankFilled < 1 && S.phase !== "early") {
             priorities.push({
@@ -175,7 +205,7 @@ CookieCheater.modules.strategist = {
 
         // --- Ascension ---
         if (S.prestige > 0 || Game.cookiesEarned > 1e14) {
-            var potentialPrestige = Math.floor(Math.sqrt(Game.cookiesEarned / 1e12));
+            var potentialPrestige = Math.floor(Math.pow(Game.cookiesEarned / 1e12, 1/3));
             var newLevels = potentialPrestige - S.prestige;
             var ratio = S.prestige > 0 ? potentialPrestige / S.prestige : newLevels;
             var target = S.prestige === 0 ? 365 : S.prestige * 2;
@@ -301,7 +331,7 @@ CookieCheater.modules.strategist = {
         var goals = [];
 
         // Ascension milestone
-        var potentialPrestige = Math.floor(Math.sqrt((Game.cookiesEarned || 0) / 1e12));
+        var potentialPrestige = Math.floor(Math.pow((Game.cookiesEarned || 0) / 1e12, 1/3));
         if (S.prestige === 0) {
             goals.push({
                 label: "First Ascension at 365 prestige",

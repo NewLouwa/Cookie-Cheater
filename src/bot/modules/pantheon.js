@@ -61,26 +61,45 @@ CookieCheater.modules.pantheon = {
     },
 
     _sellForGodzamok: function() {
-        // Sell the cheapest buildings we can quickly rebuy
-        // Cursors and Farms are best (cheap to rebuy)
-        var targets = [0, 2, 3]; // Cursor, Farm, Mine
+        // Sell cheap buildings for Godzamok click buff
+        // +1% click power per building sold (Diamond slot) for 10 seconds
+        // Use KB targets if available, otherwise default
+        var targets = CookieCheater.KB && CookieCheater.KB.combos
+            ? CookieCheater.KB.combos.godzamokTargets
+            : [0, 2, 3, 4]; // Cursor, Farm, Mine, Factory
+        var safe = CookieCheater.KB && CookieCheater.KB.combos
+            ? CookieCheater.KB.combos.godzamokSafe
+            : [7]; // Never sell Wizard Towers
+
+        var totalSold = 0;
         for (var t = 0; t < targets.length; t++) {
+            if (safe.indexOf(targets[t]) !== -1) continue;
             var b = Game.ObjectsById[targets[t]];
             if (!b || b.amount < 10) continue;
-            // Sell 10 buildings (= +10% click power with Diamond Godzamok)
-            var sellCount = Math.min(b.amount - 1, 50);
-            for (var s = 0; s < sellCount; s++) {
-                b.sell(1);
-            }
-            // Schedule rebuy after combo ends
-            var buildingId = targets[t];
-            var rebuys = sellCount;
-            setTimeout(function() {
-                var rb = Game.ObjectsById[buildingId];
-                for (var r = 0; r < rebuys; r++) {
-                    if (Game.cookies >= rb.price) rb.buy(1);
-                }
-            }, 12000); // Rebuy after 12s (combo buff lasts 10s)
+
+            // Keep at least 1 of each building
+            var sellCount = Math.min(b.amount - 1, 200);
+            if (sellCount <= 0) continue;
+
+            // Sell in bulk
+            b.sell(sellCount);
+            totalSold += sellCount;
+
+            // Schedule rebuy after combo expires (10s buff + 2s safety)
+            (function(buildingId, count) {
+                setTimeout(function() {
+                    var rb = Game.ObjectsById[buildingId];
+                    for (var r = 0; r < count; r++) {
+                        if (Game.cookies >= rb.price) rb.buy(1);
+                    }
+                    CookieCheater.justify("pantheon", "REBUY", rb.name + " x" + count + " after Godzamok combo");
+                }, 12000);
+            })(targets[t], sellCount);
+        }
+
+        if (totalSold > 0) {
+            CookieCheater.justify("pantheon", "GODZAMOK_SELL",
+                "Sold " + totalSold + " buildings for +" + totalSold + "% click power (10s)");
         }
     },
 

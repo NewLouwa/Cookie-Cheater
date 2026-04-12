@@ -152,6 +152,16 @@ CookieCheater.modules.purchaser = {
         this.currentPhase = "early: clicking...";
     },
 
+    // Cookie Monster payback formula:
+    // payback = max(cost - bank, 0) / CPS  +  cost / deltaCPS
+    // Part 1: time to AFFORD it (opportunity cost of waiting)
+    // Part 2: time for it to PAY FOR ITSELF
+    _opportunityCostPayback: function(price, deltaCps, cookies, cps) {
+        var timeToAfford = Math.max(price - cookies, 0) / Math.max(cps, 0.001);
+        var timeToPayback = price / Math.max(deltaCps, 0.001);
+        return timeToAfford + timeToPayback;
+    },
+
     _rankBuildings: function(cookies, cps) {
         var bestOverall = null;
         var bestOverallPayback = Infinity;
@@ -167,7 +177,8 @@ CookieCheater.modules.purchaser = {
             if (singleCps <= 0) singleCps = b.baseCps * Game.globalCpsMult;
             if (singleCps <= 0) singleCps = 0.001;
 
-            var payback = price / singleCps;
+            // Use Cookie Monster's opportunity cost formula
+            var payback = this._opportunityCostPayback(price, singleCps, cookies, cps);
             var milestoneFactor = this._milestoneFactor(b);
             payback = payback / milestoneFactor;
 

@@ -356,6 +356,84 @@ CookieCheater.KB = {
     },
 
     // ========================================================================
+    // COMBO STRATEGIES (from wiki General Combo Guide)
+    // ========================================================================
+    // Combos are the PRIMARY way to progress mid-to-late game.
+    // A combo requires at least one CPS multiplier + one Click multiplier.
+    //
+    // Tier 1 (Basic):
+    //   Frenzy(x7) + Click Frenzy(x777) = x5,439 per click
+    //   Frenzy(x7) + Dragonflight(x1111) = x7,777 per click
+    //
+    // Tier 2 (Advanced):
+    //   Frenzy(x7) + Building Special(variable) + Click Frenzy(x777)
+    //   = massive burst, scales with building count
+    //
+    // Tier 3 (Endgame):
+    //   Elder Frenzy(x666) + Click Frenzy(x777) = x517,482 per click
+    //   (requires Grandmapocalypse stage 3 for wrath cookies)
+    //
+    // COMBO SETUP:
+    // 1. Wait for natural Frenzy (golden cookie, most common buff)
+    // 2. While Frenzy active, cast Force the Hand of Fate (Grimoire)
+    //    - FtHoF during Frenzy has high chance of Click Frenzy or Building Special
+    // 3. Immediately: swap Godzamok into Diamond, sell 200+ cheap buildings
+    // 4. Burst-click for 10-13 seconds
+    // 5. Rebuy sold buildings after combo expires
+    //
+    // GODZAMOK STRATEGY:
+    // - Diamond slot: +1% click power per building sold for 10 seconds
+    // - Sell buildings that contribute <2% total CPS (Cursors, Farms, Mines)
+    // - Never sell Wizard Towers (need magic for spells)
+    // - Selling 200 buildings = +200% click power on top of combo
+    //
+    // GARDEN BOOST:
+    // - Whiskerblooms: nearly always better than Thumbcorn
+    // - Plant full garden of Whiskerblooms before combo attempts
+    // - They provide ~5-15% CPS boost that multiplies with combo
+    //
+    // AURA SWAP:
+    // - During combo: Dragonflight or Dragon Cursor aura
+    // - Passive: Radiant Appetite (x2 CPS) + Breath of Milk
+    combos: {
+        tier1: { name: "Frenzy + Click Frenzy", multiplier: 5439 },
+        tier2: { name: "Frenzy + Building Special + CF", multiplier: "variable (100K+)" },
+        tier3: { name: "Elder Frenzy + Click Frenzy", multiplier: 517482 },
+        godzamokTargets: [0, 2, 3, 4], // Cursor, Farm, Mine, Factory (cheap to rebuy)
+        godzamokSafe: [7], // Never sell Wizard Towers
+        minSellCount: 100, // Minimum buildings to sell for meaningful boost
+    },
+
+    // ========================================================================
+    // PRESTIGE MECHANICS (from wiki)
+    // ========================================================================
+    // Formula: prestige = floor((cookiesBakedAllTime / 1e12) ^ (1/3))
+    // NOTE: This is CUBE ROOT, not square root!
+    // Each prestige level = +1% CPS (additive, requires Legacy upgrade)
+    // Ascending resets: buildings, upgrades, bank, wrinklers
+    // Keeps: heavenly upgrades, permanent upgrade slots, challenge status
+    //
+    // Optimal ascension timing:
+    //   First: at 365 prestige (48.6 quintillion cookies baked)
+    //   Subsequent: when new prestige >= current * 2 (doubling rule)
+    //
+    // Key heavenly upgrades that directly boost CPS:
+    //   Heavenly Cookies: +10% production
+    //   Wrinkly Cookies: +10% production
+    //   Sugar Crystal Cookies: +5% plus per-building-level bonus
+    //   Lucky Digit/Number/Payout: +1% prestige effect each
+    prestige: {
+        formula: function(cookiesBaked) {
+            return Math.floor(Math.pow(cookiesBaked / 1e12, 1/3));
+        },
+        cookiesNeeded: function(targetPrestige) {
+            return Math.pow(targetPrestige, 3) * 1e12;
+        },
+        firstTarget: 365,
+        subsequentMultiplier: 2.0,
+    },
+
+    // ========================================================================
     // GOLDEN COOKIE MECHANICS
     // ========================================================================
     // Lucky payout = min(900 * CPS, 15% of bank + 13)

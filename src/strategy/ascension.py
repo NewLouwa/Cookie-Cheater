@@ -40,12 +40,12 @@ def calculate_prestige(cookies_baked):
     """
     if cookies_baked < 1e12:
         return 0
-    return int(math.sqrt(cookies_baked / 1e12))
+    return int((cookies_baked / 1e12) ** (1/3))
 
 
 def cookies_for_prestige(target_prestige):
     """Calculate cookies needed to reach a target prestige level."""
-    return (target_prestige ** 2) * 1e12
+    return (target_prestige ** 3) * 1e12
 
 
 def should_ascend(game_state, config):
