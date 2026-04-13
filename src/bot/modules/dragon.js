@@ -62,36 +62,91 @@ CookieCheater.modules.dragon = {
         }
     },
 
+    // Default aura: Dragonflight (10) — chance for x1111 click buff from golden cookies
+    // During combo: swap to Radiant Appetite (11) = x2 CPS for max combo value
+    // After combo: swap back to Dragonflight
+    //
+    // Aura swap costs 50 buildings of the most-built type!
+    // So we sell 50, swap, then rebuy 50 after.
+    _auraSwapping: false,
+
     _setAuras: function() {
         try {
-            // Aura 1: Radiant Appetite (11) = x2 CPS, best single aura
-            // Fallback: Earth Shatterer (5) if Radiant not unlocked yet
-            var wantedAura1 = 11; // Radiant Appetite
-            var wantedAura2 = 1;  // Breath of Milk
+            var comboTier = CookieCheater._comboTier || 0;
 
-            // Check what's available based on dragon level
-            // Level 5+: can set aura 1
-            // Level 21+: Radiant Appetite unlocked
-            // Level 25: can set aura 2 (dual aura)
+            // Desired auras based on state
+            var wantedAura1, wantedAura2;
+
+            if (comboTier >= 2) {
+                // During combo: Radiant Appetite (x2 CPS) to maximize combo value
+                wantedAura1 = 11; // Radiant Appetite
+                wantedAura2 = 1;  // Breath of Milk
+            } else {
+                // Default: Dragonflight — chance for x1111 click buff from golden cookies
+                wantedAura1 = 10; // Dragonflight
+                wantedAura2 = 11; // Radiant Appetite (if dual aura available)
+            }
+
+            // Fallbacks for low dragon level
             if (Game.dragonLevel < 21) {
-                wantedAura1 = 5; // Earth Shatterer until Radiant available
+                wantedAura1 = 10; // Dragonflight always available at level 5+
+                wantedAura2 = 5;  // Earth Shatterer
             }
+            if (Game.dragonLevel < 5) return;
 
+            // Check if aura 1 needs changing
             if (Game.dragonAura !== wantedAura1) {
-                Game.dragonAura = wantedAura1;
-                Game.recalculateGains = 1;
-                CookieCheater.log("dragon", "aura1", "Set to " + this._auraName(wantedAura1));
+                this._swapAura(1, wantedAura1);
             }
 
-            // Second aura slot (level 25+)
+            // Aura 2 (level 25+)
             if (Game.dragonLevel >= 25 && typeof Game.dragonAura2 !== "undefined") {
                 if (Game.dragonAura2 !== wantedAura2) {
-                    Game.dragonAura2 = wantedAura2;
-                    Game.recalculateGains = 1;
-                    CookieCheater.log("dragon", "aura2", "Set to " + this._auraName(wantedAura2));
+                    this._swapAura(2, wantedAura2);
                 }
             }
         } catch(e) {}
+    },
+
+    _swapAura: function(slot, auraId) {
+        // Aura swapping costs sacrificing 50 buildings!
+        // Sell 50 of cheapest building, swap, rebuy
+        if (this._auraSwapping) return; // Prevent double-swap
+        this._auraSwapping = true;
+
+        // Find cheapest building with 50+ to sell
+        var target = null;
+        for (var i = 0; i < Game.ObjectsById.length; i++) {
+            var b = Game.ObjectsById[i];
+            if (b.locked || b.amount < 55) continue; // Need 55+ to keep 5 after sell
+            if (!target || b.price < target.price) target = b;
+        }
+
+        if (!target) {
+            // Can't afford the swap — no building has 55+
+            this._auraSwapping = false;
+            return;
+        }
+
+        // Sell 50
+        target.sell(50);
+
+        // Set aura
+        if (slot === 1) {
+            Game.dragonAura = auraId;
+        } else {
+            Game.dragonAura2 = auraId;
+        }
+        Game.recalculateGains = 1;
+
+        // Rebuy 50 immediately
+        target.buy(50);
+
+        CookieCheater.justify("dragon", "AURA_SWAP",
+            "Aura " + slot + " → " + this._auraName(auraId) +
+            " (sold+rebuilt 50 " + target.name + ")");
+
+        this._auraSwapping = false;
     },
 
     _auraName: function(id) {
