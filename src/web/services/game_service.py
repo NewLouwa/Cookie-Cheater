@@ -150,7 +150,7 @@ class GameService:
                         if (!Game.UpgradesByPool || !Game.UpgradesByPool.prestige) return JSON.stringify(bought);
                         for (var i = 0; i < Game.UpgradesByPool.prestige.length; i++) {
                             var u = Game.UpgradesByPool.prestige[i];
-                            if (!u.bought && u.unlocked && u.canBuy()) { u.buy(); bought.push(u.name); }
+                            if (!u.bought && u.canBuy() && u.basePrice <= Game.heavenlyChips) { Game.PurchaseHeavenlyUpgrade(u.id); if (u.bought) bought.push(u.name); }
                         }
                         return JSON.stringify(bought);
                     })()""")

@@ -102,12 +102,12 @@ async def trigger_ascend(request: Request):
             var bought = [];
             if (!Game.UpgradesByPool || !Game.UpgradesByPool.prestige) return JSON.stringify(bought);
             var pool = Game.UpgradesByPool.prestige;
-            for (var i = 0; i < pool.length; i++) {
-                var u = pool[i];
-                if (!u.bought && u.unlocked && u.canBuy()) {
-                    u.buy();
-                    bought.push(u.name);
-                }
+            var buyable = pool.filter(function(u) { return !u.bought && u.canBuy() && u.basePrice <= Game.heavenlyChips; });
+            buyable.sort(function(a, b) { return a.basePrice - b.basePrice; });
+            for (var i = 0; i < buyable.length; i++) {
+                if (buyable[i].basePrice > Game.heavenlyChips) break;
+                Game.PurchaseHeavenlyUpgrade(buyable[i].id);
+                if (buyable[i].bought) bought.push(buyable[i].name);
             }
             return JSON.stringify(bought);
         })()""")
