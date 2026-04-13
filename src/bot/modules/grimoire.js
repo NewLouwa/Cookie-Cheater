@@ -131,9 +131,11 @@ CookieCheater.modules.grimoire = {
     },
 
     _getCpsMult: function() {
+        // Only count POSITIVE CPS buffs (not loan penalties or Clot)
         var mult = 1;
         for (var name in Game.buffs) {
-            if (Game.buffs[name].multCpS) mult *= Game.buffs[name].multCpS;
+            var m = Game.buffs[name].multCpS;
+            if (m && m > 1) mult *= m; // Only multiply buffs, not debuffs
         }
         return mult;
     }

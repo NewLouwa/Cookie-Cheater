@@ -20,8 +20,10 @@
 CookieCheater.modules.garden = {
     _phase: "init",
     _lastSoilChange: 0,
-    _tileGoals: {},     // { "x,y": { goal: "mutation_parent|farming|ring", seed: "name", targetChild: "name" } }
-    _gardenState: null, // Exposed to dashboard
+    _tileGoals: {},
+    _gardenState: null,
+    _mutationPlanLogged: false,
+    _lastMutationTarget: null,
 
     tick: function() {
         if (!CookieCheater.config.garden_enabled) return;
@@ -180,9 +182,15 @@ CookieCheater.modules.garden = {
         }
 
         if (!target) {
-            // No mutations possible with current seeds — fill with wheat/bakeberry for CPS
+            this._mutationPlanLogged = false;
             this._executeFarming(M, this._hasSeed(M, "Bakeberry") ? "Bakeberry" : "Baker's wheat");
             return;
+        }
+
+        // Reset log flag when mutation target changes
+        if (this._lastMutationTarget !== target.mut.child) {
+            this._lastMutationTarget = target.mut.child;
+            this._mutationPlanLogged = false;
         }
 
         // ================================================================
@@ -263,10 +271,16 @@ CookieCheater.modules.garden = {
                 }
             }
         }
+        // Count how many were actually planted this tick (not already existing)
         var planted = 0;
-        for (var k in this._tileGoals) { if (this._tileGoals[k].goal === "mutation_parent") planted++; }
+        var totalParents = 0;
+        for (var k in this._tileGoals) {
+            if (this._tileGoals[k].goal === "mutation_parent") totalParents++;
+        }
 
-        if (planted > 0) {
+        // Only log when we actually changed something
+        if (totalParents > 0 && !this._mutationPlanLogged) {
+            this._mutationPlanLogged = true;
             var chanceStr = target.mut.chance >= 0.01 ? (target.mut.chance * 100) + "%" : (target.mut.chance * 100).toFixed(2) + "%";
             CookieCheater.justify("garden", "MUTATION_PLAN",
                 "Planted " + planted + "x " + target.mut.parents[0] +
