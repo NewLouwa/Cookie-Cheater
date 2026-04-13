@@ -22,7 +22,7 @@ class BotConfig:
     # Ascension
     first_ascension_target: int = 365
     ascension_multiplier: float = 2.0
-    auto_ascend: bool = False
+    auto_ascend: bool = True
 
     # Grandmapocalypse: "pledge", "covenant", or "full"
     grandmapocalypse_strategy: str = "pledge"

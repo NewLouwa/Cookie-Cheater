@@ -108,19 +108,99 @@ class GameService:
     def stop(self):
         self._running = False
 
+    _ascending: False  # Prevent double-ascension
+
     async def _check_strategy(self, state, loop):
         """Check high-level strategic decisions."""
-        # Check ascension
-        if self.config.auto_ascend:
-            do_ascend, reason = should_ascend(state, self.config)
-            if do_ascend:
-                # Save before ascending
-                await loop.run_in_executor(self._executor, self.bridge.save_to_file)
-                await loop.run_in_executor(self._executor, self.bridge.trigger_ascension)
-                # Wait for ascension screen
-                await asyncio.sleep(2)
-                # TODO: buy heavenly upgrades
-                await loop.run_in_executor(self._executor, self.bridge.reincarnate)
+        if not self.config.auto_ascend or self._ascending:
+            return
+
+        do_ascend, reason = should_ascend(state, self.config)
+        if not do_ascend:
+            return
+
+        self._ascending = True
+        try:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"AUTO-ASCENSION triggered: {reason}")
+
+            # Step 1: Save game
+            await loop.run_in_executor(self._executor, self.bridge.save_to_file)
+
+            # Step 2: Pre-ascension mega spend
+            await loop.run_in_executor(self._executor, lambda:
+                self.bridge.connection.evaluate_js(
+                    "CookieCheater.modules.purchaser.preAscensionSpend()"
+                )
+            )
+            await asyncio.sleep(1)
+
+            # Step 3: Ascend (bypass confirmation)
+            await loop.run_in_executor(self._executor, lambda:
+                self.bridge.connection.evaluate_js("Game.Ascend(1)")
+            )
+            await asyncio.sleep(2)
+
+            # Step 4: Buy all affordable heavenly upgrades (multiple passes)
+            for _ in range(10):
+                result = await loop.run_in_executor(self._executor, lambda:
+                    self.bridge.connection.evaluate_js("""(function() {
+                        var bought = [];
+                        if (!Game.UpgradesByPool || !Game.UpgradesByPool.prestige) return JSON.stringify(bought);
+                        for (var i = 0; i < Game.UpgradesByPool.prestige.length; i++) {
+                            var u = Game.UpgradesByPool.prestige[i];
+                            if (!u.bought && u.unlocked && u.canBuy()) { u.buy(); bought.push(u.name); }
+                        }
+                        return JSON.stringify(bought);
+                    })()""")
+                )
+                if not result or result == "[]":
+                    break
+                await asyncio.sleep(0.5)
+
+            # Step 5: Reincarnate (bypass confirmation)
+            await asyncio.sleep(1)
+            await loop.run_in_executor(self._executor, lambda:
+                self.bridge.connection.evaluate_js("Game.Reincarnate(1)")
+            )
+            await asyncio.sleep(3)
+
+            # Step 6: Wait for game ready
+            for _ in range(20):
+                ready = await loop.run_in_executor(self._executor, lambda:
+                    self.bridge.connection.evaluate_js(
+                        "typeof Game !== 'undefined' && Game.ready ? 'ready' : 'loading'"
+                    )
+                )
+                if ready == "ready":
+                    break
+                await asyncio.sleep(1)
+
+            # Step 7: Re-inject bot
+            await loop.run_in_executor(self._executor, lambda:
+                self.bridge.connection.evaluate_js("""
+                    if (window.CookieCheater) { CookieCheater.running=false; CookieCheater.modules={}; }
+                    delete window.CookieCheater; 'ok'
+                """)
+            )
+            await asyncio.sleep(0.5)
+
+            from ...bot.assembler import assemble_bot
+            js_code = assemble_bot(self.config.to_dict())
+            await loop.run_in_executor(self._executor, lambda:
+                self.bridge.inject_bot(js_code)
+            )
+
+            logger.info("AUTO-ASCENSION complete — bot re-injected for new run")
+            self._last_action_count = 0
+            self._last_combo_count = 0
+
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Auto-ascension failed: {e}")
+        finally:
+            self._ascending = False
 
     async def broadcast(self, data):
         """Send state to all connected WebSocket clients."""
