@@ -29,14 +29,12 @@ CookieCheater.modules.purchaser = {
         // Tier 2+ (x100+): aggressive building rush to maximize CPS during multiplier
         // After any combo: upgrade rush (permanent multipliers first)
         var comboTier = CookieCheater._comboTier || 0;
-        if (comboTier >= 2) {
-            // Real combo — aggressive building rush
+        if (comboTier >= 1) {
+            // ANY buff active — aggressive building + upgrade rush
+            // Tier 1 (Frenzy x7): buy fast, skip Lucky bank
+            // Tier 2+ (x21+): full aggressive rush
             this._comboBuildingRush(cookies, cps);
             return;
-        }
-        if (comboTier === 1) {
-            // Frenzy alone — still buy upgrades and good buildings, but use normal logic
-            // (falls through to normal purchasing below, just skips Lucky banking)
         }
         if (this._comboUpgradeRush(cookies, cps)) return;
 

@@ -19,14 +19,13 @@ CookieCheater.modules.clicker = {
 
         var combo = this._detectCombo();
 
-        // Any buff with score > 1 is a "combo" — but we expose the TIER
-        // so other modules can scale their behavior:
+        // Combo tiers — scaled response:
         //   tier 0: no buffs (score=1)
-        //   tier 1: single buff like Frenzy x7 (score < 100) — buy smart, NO godzamok
-        //   tier 2: multi-buff combo (score >= 100) — aggressive buying, godzamok sells
-        //   tier 3: mega combo (score >= 1000) — full burst, max godzamok
+        //   tier 1: Frenzy x7 alone (score 2-20) — buy buildings+upgrades, skip Lucky bank, NO godzamok
+        //   tier 2: Frenzy + Building Special, Elder Frenzy etc (score 21-499) — aggressive, godzamok small
+        //   tier 3: Frenzy + Click Frenzy (score 500+) — full burst, max godzamok, pop wrinklers
         this._comboActive = combo.score > 1;
-        this._comboTier = combo.score >= 1000 ? 3 : combo.score >= 100 ? 2 : combo.score > 1 ? 1 : 0;
+        this._comboTier = combo.score >= 500 ? 3 : combo.score >= 21 ? 2 : combo.score > 1 ? 1 : 0;
 
         // Expose combo state for other modules (Godzamok, etc.)
         CookieCheater._comboActive = this._comboActive;
