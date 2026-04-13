@@ -128,15 +128,17 @@ var CookieCheater = window.CookieCheater = {
                 // Check if it's a dangerous popup (One Mind, Communal Brainsweep, Elder Pact)
                 var text = prompt.innerText || '';
                 if (text.indexOf('One mind') !== -1 || text.indexOf('Communal brainsweep') !== -1 || text.indexOf('Elder Pact') !== -1) {
-                    // Grandmapocalypse trigger — click No if strategy is not "full"
                     if (CookieCheater.config.grandmapocalypse_strategy !== "full") {
                         Game.ClosePrompt();
-                        CookieCheater.justify("engine", "POPUP_CLOSED", "Dismissed Grandmapocalypse popup (strategy: " + CookieCheater.config.grandmapocalypse_strategy + ")");
+                        CookieCheater.log("engine", "popup_close", "Dismissed Grandmapocalypse popup");
                         return;
                     }
                 }
-                // Any other popup — close it
-                Game.ClosePrompt();
+                // Don't auto-close ALL popups — some are user-initiated
+                // Only close known problematic ones
+                if (text.indexOf('One mind') !== -1 || text.indexOf('unexpected') !== -1) {
+                    Game.ClosePrompt();
+                }
             }
         } catch(e) {}
     },

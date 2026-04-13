@@ -12,7 +12,7 @@
 
 CookieCheater.modules.dragon = {
     _auraSwapping: false,
-    _lastTrainCheck: 0,
+    _lastLoggedLevel: -1,
 
     tick: function() {
         if (!CookieCheater.config.dragon_enabled) return;
@@ -64,9 +64,9 @@ CookieCheater.modules.dragon = {
             return;
         }
 
-        // Can't afford — log what's needed (every 30s)
-        if (Date.now() - this._lastTrainCheck > 30000) {
-            this._lastTrainCheck = Date.now();
+        // Can't afford — log what's needed ONCE per level
+        if (this._lastLoggedLevel !== Game.dragonLevel) {
+            this._lastLoggedLevel = Game.dragonLevel;
             // Training costs: level 5-24 need 100 of building[level-5]
             var buildingIdx = Game.dragonLevel - 5;
             if (buildingIdx >= 0 && buildingIdx < Game.ObjectsById.length) {

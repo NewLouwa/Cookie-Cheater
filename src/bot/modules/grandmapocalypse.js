@@ -81,15 +81,16 @@ CookieCheater.modules.grandmapocalypse = {
         }
     },
 
-    _warnResearch: function() {
-        if (!CookieCheater.throttle("grandma_warn", 30000)) return; // Check every 30s
+    _warnedOneMind: false,
 
-        // Warn if One Mind is about to be bought (triggers Stage 1)
+    _warnResearch: function() {
+        if (this._warnedOneMind) return; // Only warn ONCE
+
         var oneMind = Game.Upgrades["One mind"];
         if (oneMind && oneMind.unlocked && !oneMind.bought) {
+            this._warnedOneMind = true;
             CookieCheater.justify("grandmapocalypse", "WARNING",
-                "One Mind is available! Buying it starts the Grandmapocalypse " +
-                "(golden cookies → wrath cookies). Strategy: " + CookieCheater.config.grandmapocalypse_strategy);
+                "One Mind is available! Buying it starts the Grandmapocalypse. Strategy: " + CookieCheater.config.grandmapocalypse_strategy);
         }
     },
 
