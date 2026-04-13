@@ -195,6 +195,20 @@ CookieCheater.modules.garden = {
         var parentName1 = target.mut.parents[0];
         var parentName2 = target.mut.parents[1];
 
+        // Parent placement rule from wiki:
+        // A (green) = the parent with FEWER self-mutations (less likely to make unwanted stuff)
+        // B (yellow) = the parent that CAN mutate with another instance of itself
+        // If a parent self-propagates (Crumbspore, Meddleweed), put it in A (fewer spots)
+        var selfPropagators = ["Crumbspore", "Doughshroom", "Meddleweed", "Brown mold", "White mildew"];
+        if (!sameSeed && selfPropagators.indexOf(parentName1) !== -1 && selfPropagators.indexOf(parentName2) === -1) {
+            // Swap: put self-propagator in A position (fewer tiles in pattern)
+            // A has fewer tiles in the community patterns
+        } else if (!sameSeed && selfPropagators.indexOf(parentName2) !== -1 && selfPropagators.indexOf(parentName1) === -1) {
+            // Parent2 self-propagates, swap so it goes to A position
+            var tmpId = target.id1; target.id1 = target.id2; target.id2 = tmpId;
+            var tmpName = parentName1; parentName1 = parentName2; parentName2 = tmpName;
+        }
+
         // Get grid bounds
         var minX = 99, maxX = 0, minY = 99, maxY = 0;
         for (var y = 0; y < 6; y++) {
@@ -350,7 +364,8 @@ CookieCheater.modules.garden = {
     // SOIL MANAGEMENT
     // ============================
     _manageSoil: function(M, farm) {
-        if (Date.now() - this._lastSoilChange < 60000) return;
+        // Soil changes have a 10 MINUTE cooldown in the game!
+        if (Date.now() - this._lastSoilChange < 600000) return;
 
         var targetSoil = 0; // Dirt default
         switch (this._phase) {
