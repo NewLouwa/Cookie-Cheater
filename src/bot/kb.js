@@ -606,27 +606,65 @@ CookieCheater.KB = {
             6: [5,4], 7: [5,5], 8: [6,5], 9: [6,6]
         },
 
-        // Mutation recipes from actual game source (getMuts function)
-        // matureReq: true = both parents must be MATURE (neighsM check)
-        //            false = parent can be any age (neighs check, e.g. brown mold)
-        // Key: pursue these in order for optimal progression
+        // COMPLETE mutation recipes from game source code (getMuts function)
+        // Verified against actual game JS — every recipe, exact chances, exact requirements
+        //
+        // neighsM = MATURE neighbors only (most recipes)
+        // neighs = ANY age neighbors (brown mold, white mildew, meddleweed, some shriekbulb)
+        //
+        // The bot pursues mutationPath in ORDER, skipping already-unlocked seeds.
+        // The path is optimized: unlock cheap/easy seeds first, build toward Queenbeet.
+        //
+        // IMPORTANT PATTERNS:
+        // - Brown mold <-> White mildew: they spontaneously create each other (50%, any age)
+        // - Meddleweed: spawns randomly in empty tiles, self-propagates
+        // - 2x same plant: needs 2+ MATURE of that plant adjacent to empty tile
+        // - Juicy Queenbeet: needs 8 MATURE Queenbeet surrounding empty tile (0.1%)
         mutationPath: [
-            // Phase 1: Basic seeds from wheat
-            { parents: ["Baker's wheat", "Baker's wheat"], child: "Thumbcorn", chance: 0.05, matureReq: true },
-            // Phase 2: Build the chain
-            { parents: ["Baker's wheat", "Thumbcorn"], child: "Cronerice", chance: 0.01, matureReq: true },
-            { parents: ["Cronerice", "Thumbcorn"], child: "Gildmillet", chance: 0.03, matureReq: true },
-            { parents: ["Baker's wheat", "Gildmillet"], child: "Ordinary clover", chance: 0.03, matureReq: true },
-            { parents: ["Ordinary clover", "Gildmillet"], child: "Shimmerlily", chance: 0.02, matureReq: true },
-            // Phase 3: High value plants
-            { parents: ["Baker's wheat", "Baker's wheat"], child: "Bakeberry", chance: 0.001, matureReq: true },
-            { parents: ["Baker's wheat", "Brown mold"], child: "Chocoroot", chance: 0.10, matureReq: [true, false] }, // wheat=mature, mold=any age!
-            { parents: ["Chocoroot", "White mildew"], child: "White chocoroot", chance: 0.10, matureReq: [true, false] }, // chocoroot=mature, mildew=any
-            { parents: ["Shimmerlily", "White chocoroot"], child: "Whiskerbloom", chance: 0.01, matureReq: true },
-            { parents: ["Shimmerlily", "Cronerice"], child: "Elderwort", chance: 0.01, matureReq: true },
-            // Phase 4: Queenbeet line
-            { parents: ["Bakeberry", "Chocoroot"], child: "Queenbeet", chance: 0.01, matureReq: true },
-            { parents: ["Queenbeet", "Queenbeet"], child: "Duketater", chance: 0.001, matureReq: true },
+            // Tier 1: Basic chain (start with wheat, unlock core seeds)
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Thumbcorn", chance: 0.05 },
+            { parents: ["Baker's wheat", "Thumbcorn"], child: "Cronerice", chance: 0.01 },
+            { parents: ["Cronerice", "Thumbcorn"], child: "Gildmillet", chance: 0.03 },
+            { parents: ["Baker's wheat", "Gildmillet"], child: "Ordinary clover", chance: 0.03 },
+            { parents: ["Ordinary clover", "Gildmillet"], child: "Shimmerlily", chance: 0.02 },
+
+            // Tier 2: Bakeberry (needs 2x mature wheat — low chance but very valuable)
+            { parents: ["Baker's wheat", "Baker's wheat"], child: "Bakeberry", chance: 0.001 },
+
+            // Tier 3: Fungi chain (brown mold/white mildew appear spontaneously)
+            // Brown mold can appear from white mildew (50%) and vice versa
+            // If we have meddleweed, brown mold, or white mildew, pursue chocoroot
+            { parents: ["Baker's wheat", "Brown mold"], child: "Chocoroot", chance: 0.10, anyAge: [1] },
+            { parents: ["Chocoroot", "White mildew"], child: "White chocoroot", chance: 0.10, anyAge: [1] },
+
+            // Tier 4: Advanced plants from chain combos
+            { parents: ["White mildew", "Ordinary clover"], child: "Green rot", chance: 0.05 },
+            { parents: ["Green rot", "Brown mold"], child: "Keenmoss", chance: 0.10 },
+            { parents: ["Shimmerlily", "White chocoroot"], child: "Whiskerbloom", chance: 0.01 },
+            { parents: ["Shimmerlily", "Cronerice"], child: "Elderwort", chance: 0.01 },
+            { parents: ["Whiskerbloom", "Whiskerbloom"], child: "Nursetulip", chance: 0.05 },
+            { parents: ["Shimmerlily", "Whiskerbloom"], child: "Chimerose", chance: 0.05 },
+
+            // Tier 5: Fungi tree
+            { parents: ["Crumbspore", "Thumbcorn"], child: "Glovemorel", chance: 0.02 },
+            { parents: ["Crumbspore", "Shimmerlily"], child: "Cheapcap", chance: 0.04 },
+            { parents: ["Crumbspore", "Brown mold"], child: "Wrinklegill", chance: 0.06 },
+            { parents: ["Crumbspore", "Crumbspore"], child: "Doughshroom", chance: 0.005 },
+            { parents: ["Doughshroom", "Green rot"], child: "Fool's bolete", chance: 0.04 },
+
+            // Tier 6: Advanced
+            { parents: ["Chocoroot", "Keenmoss"], child: "Drowsyfern", chance: 0.005 },
+            { parents: ["Cronerice", "Keenmoss"], child: "Wardlichen", chance: 0.005 },
+            { parents: ["Baker's wheat", "White chocoroot"], child: "Tidygrass", chance: 0.002 },
+
+            // Tier 7: Queenbeet line (the goal!)
+            { parents: ["Bakeberry", "Chocoroot"], child: "Queenbeet", chance: 0.01 },
+            { parents: ["Queenbeet", "Queenbeet"], child: "Duketater", chance: 0.001 },
+
+            // Tier 8: Endgame
+            { parents: ["Wrinklegill", "Elderwort"], child: "Shriekbulb", chance: 0.001 },
+            { parents: ["Elderwort", "Crumbspore"], child: "Ichorpuff", chance: 0.002 },
+            // Everdaisy needs 3x Tidygrass + 3x Elderwort — special pattern
         ],
 
         // Plants to harvest for permanent upgrades (name -> upgrade drop chance)

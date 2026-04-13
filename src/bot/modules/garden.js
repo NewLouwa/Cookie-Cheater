@@ -107,10 +107,19 @@ CookieCheater.modules.garden = {
                 var age = tile[1];
                 var matureAge = (plant.mature || 50);
 
-                // NEVER harvest mutation parents before they're done (let them stay mature for mutation ticks)
+                // NEVER harvest mutation parents — they need to stay mature for mutations!
                 var key = x + "," + y;
                 var goal = this._tileGoals[key];
-                if (goal && goal.goal === "mutation_parent" && age < 95) continue;
+                if (goal && goal.goal === "mutation_parent") continue;
+
+                // Even without a goal tag, if we're in mutating phase,
+                // don't harvest any plant that's a parent for the current mutation target
+                if (this._phase === "mutating") {
+                    var nextMut = this._getNextMutationTarget(M);
+                    if (nextMut && (plant.name === nextMut.parents[0] || plant.name === nextMut.parents[1])) {
+                        continue; // Keep this parent alive for mutations!
+                    }
+                }
 
                 // Crumbspore/Doughshroom: let die naturally (explode into cookies)
                 if (plant.name === "Crumbspore" || plant.name === "Doughshroom") continue;
