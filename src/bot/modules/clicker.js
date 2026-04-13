@@ -19,13 +19,13 @@ CookieCheater.modules.clicker = {
 
         var combo = this._detectCombo();
 
-        // Combo tiers — scaled response:
+        // Combo tiers:
         //   tier 0: no buffs (score=1)
-        //   tier 1: Frenzy x7 alone (score 2-20) — buy buildings+upgrades, skip Lucky bank, NO godzamok
-        //   tier 2: Frenzy + Building Special, Elder Frenzy etc (score 21-499) — aggressive, godzamok small
-        //   tier 3: Frenzy + Click Frenzy (score 500+) — full burst, max godzamok, pop wrinklers
+        //   tier 1: Frenzy x7 alone (score 2-9) — buy buildings+upgrades, skip Lucky bank
+        //   tier 2: score 10+ (Frenzy+BS, Elder Frenzy...) — godzamok, wrinkler pop
+        //   tier 3: score 1000+ (Frenzy+CF, mega combos) — full burst, max godzamok
         this._comboActive = combo.score > 1;
-        this._comboTier = combo.score >= 500 ? 3 : combo.score >= 21 ? 2 : combo.score > 1 ? 1 : 0;
+        this._comboTier = combo.score >= 1000 ? 3 : combo.score >= 10 ? 2 : combo.score > 1 ? 1 : 0;
 
         // Expose combo state for other modules (Godzamok, etc.)
         CookieCheater._comboActive = this._comboActive;
