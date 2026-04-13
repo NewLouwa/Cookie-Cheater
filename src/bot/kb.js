@@ -314,6 +314,23 @@ CookieCheater.KB = {
             notes: "Unique game-changing upgrade. Buy when affordable."
         },
 
+        // ---- TOGGLE / UI UPGRADES (NEVER auto-buy) ----
+        // These are toggles or UI elements, not real upgrades
+        toggle: {
+            detect: function(u) {
+                var toggles = [
+                    "Milk selector", "Golden switch", "Golden switch [off]", "Golden switch [on]",
+                    "Shimmering veil", "Shimmering veil [off]", "Shimmering veil [on]",
+                    "Sugar frenzy", "Background selector", "Festive biscuit",
+                ];
+                return toggles.indexOf(u.name) !== -1 || (u.pool && u.pool === "toggle");
+            },
+            value: function(u, cps) { return 0; },
+            priority: 0,
+            skip: true,
+            notes: "Toggle/UI upgrade. NEVER auto-buy."
+        },
+
         // ---- ELDER PLEDGE / COVENANT ----
         // Special: managed by grandmapocalypse.js module
         elderControl: {

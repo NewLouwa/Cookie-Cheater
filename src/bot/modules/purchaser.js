@@ -339,11 +339,15 @@ CookieCheater.modules.purchaser = {
 
     // Early game: just buy anything affordable, cheapest first
     _earlyGameBuy: function(cookies) {
-        // Buy cheapest affordable upgrade first (often cursor/grandma upgrades)
         var cheapestUpgrade = null;
         for (var i = 0; i < Game.UpgradesInStore.length; i++) {
             var u = Game.UpgradesInStore[i];
             if (u.bought || !u.canBuy()) continue;
+            // Skip toggle/UI upgrades and module-managed upgrades
+            if (CookieCheater.KB) {
+                var a = CookieCheater.KB.analyzeUpgrade(u, Game.cookiesPs);
+                if (a.skip) continue;
+            }
             if (!cheapestUpgrade || u.basePrice < cheapestUpgrade.basePrice) {
                 cheapestUpgrade = u;
             }
