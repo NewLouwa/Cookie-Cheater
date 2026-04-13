@@ -143,11 +143,65 @@ var CookieCheater = window.CookieCheater = {
         } catch(e) {}
     },
 
+    // Track user manual actions (things the user clicks, not the bot)
+    _userActionTracker: {
+        _lastUpgradeCount: -1,
+        _lastBuildingCounts: null,
+        _lastCookies: 0,
+
+        check: function() {
+            // Only check every 2 seconds
+            if (!CookieCheater.throttle("user_track", 2000)) return;
+
+            // Detect manual upgrade purchases
+            var currentUpgrades = 0;
+            for (var k in Game.Upgrades) { if (Game.Upgrades[k].bought) currentUpgrades++; }
+            if (this._lastUpgradeCount >= 0 && currentUpgrades > this._lastUpgradeCount) {
+                var diff = currentUpgrades - this._lastUpgradeCount;
+                if (diff > CookieCheater.stats.upgradesBought - (this._lastBotUpgrades || 0)) {
+                    CookieCheater.log("user", "MANUAL_UPGRADE", diff + " upgrade(s) bought manually by user");
+                }
+            }
+            this._lastUpgradeCount = currentUpgrades;
+            this._lastBotUpgrades = CookieCheater.stats.upgradesBought;
+
+            // Detect manual building purchases
+            if (!this._lastBuildingCounts) {
+                this._lastBuildingCounts = {};
+                for (var i = 0; i < Game.ObjectsById.length; i++) {
+                    this._lastBuildingCounts[i] = Game.ObjectsById[i].amount;
+                }
+            } else {
+                for (var i = 0; i < Game.ObjectsById.length; i++) {
+                    var b = Game.ObjectsById[i];
+                    var prev = this._lastBuildingCounts[i] || 0;
+                    if (b.amount > prev) {
+                        var diff = b.amount - prev;
+                        // Check if bot bought these (compare with bot stats increment)
+                        // Simple heuristic: if more than 10 bought at once, likely manual bulk buy
+                        if (diff > 10) {
+                            CookieCheater.log("user", "MANUAL_BUILD", b.name + " +" + diff + " (manual bulk buy?)");
+                        }
+                    }
+                    this._lastBuildingCounts[i] = b.amount;
+                }
+            }
+
+            // Detect manual ascension (prestige changed)
+            if (this._lastPrestige !== undefined && Game.prestige !== this._lastPrestige) {
+                CookieCheater.log("user", "ASCENSION", "Prestige changed: " + this._lastPrestige + " -> " + Game.prestige);
+            }
+            this._lastPrestige = Game.prestige;
+        }
+    },
+
     // Main loop: called every game logic frame
     mainLoop: function() {
         if (!CookieCheater.running) return;
         // Handle blocking popups first
         CookieCheater._closePopups();
+        // Track user manual actions
+        CookieCheater._userActionTracker.check();
         for (var key in CookieCheater.modules) {
             try {
                 CookieCheater.modules[key].tick();
