@@ -149,12 +149,13 @@ CookieCheater.modules.purchaser = {
                 return;
         }
 
-        // Buy the best affordable building
+        // Buy the best affordable building — BULK
         if (bestAffordableBuilding) {
-            bestAffordableBuilding.ref.buy();
-            CookieCheater.stats.buildingsBought++;
+            var bulkCount = this._bulkBuy(bestAffordableBuilding.ref, effectiveCookies);
+            if (bulkCount <= 0) bulkCount = 1; // Fallback
+            CookieCheater.stats.buildingsBought += bulkCount;
             var bName = bestAffordableBuilding.name;
-            var bAmt = bestAffordableBuilding.ref.amount;
+            var bAmt = bestAffordableBuilding.ref.amount + " (+" + bulkCount + ")";
             var bPb = Math.round(bestAffordableBuilding.payback);
             CookieCheater.justify("purchaser", "BUY_BUILDING",
                 bName + " #" + bAmt + " $" + this._fmt(bestAffordableBuilding.price) +
@@ -209,11 +210,10 @@ CookieCheater.modules.purchaser = {
         }
 
         if (bestBuilding && bestBuilding.price <= cookies) {
-            bestBuilding.buy();
-            CookieCheater.stats.buildingsBought++;
+            var comboBulk = this._bulkBuy(bestBuilding, cookies);
+            CookieCheater.stats.buildingsBought += comboBulk;
             CookieCheater.justify("purchaser", "COMBO_BUILDING",
-                "[DURING COMBO] " + bestBuilding.name + " #" + bestBuilding.amount +
-                " $" + this._fmt(bestBuilding.price) +
+                "[DURING COMBO] " + bestBuilding.name + " x" + comboBulk + " (#" + bestBuilding.amount + ")" +
                 " — maximizing CPS while x" + Math.round(CookieCheater._comboScore || 1) + " multiplier active!");
             this._lastPurchaseTime = Date.now();
             this.currentPhase = "COMBO: " + bestBuilding.name;
@@ -327,10 +327,10 @@ CookieCheater.modules.purchaser = {
         }
 
         if (bestBuilding) {
-            bestBuilding.buy();
-            CookieCheater.stats.buildingsBought++;
+            var ascBulk = this._bulkBuy(bestBuilding);
+            CookieCheater.stats.buildingsBought += ascBulk;
             CookieCheater.justify("purchaser", "POST_ASCENSION",
-                "[ASCENSION] " + bestBuilding.name + " #" + bestBuilding.amount +
+                "[ASCENSION] " + bestBuilding.name + " x" + ascBulk + " (#" + bestBuilding.amount + ")" +
                 " — building CPS to afford next upgrade");
             this._lastPurchaseTime = Date.now();
             this.currentPhase = "ASCENSION: " + bestBuilding.name;
@@ -590,6 +590,24 @@ CookieCheater.modules.purchaser = {
             }
         }
         return false;
+    },
+
+    // Calculate how many of a building we can afford and buy them all at once
+    _bulkBuy: function(building, maxSpend) {
+        if (!maxSpend) maxSpend = Game.cookies;
+        // Estimate how many we can afford (price increases 15% per building)
+        // price(n) = basePrice * 1.15^n, total for k buildings ≈ price * (1.15^k - 1) / 0.15
+        var price = building.price;
+        if (price > maxSpend || price <= 0) return 0;
+
+        // Quick estimate: how many can we buy?
+        var estimate = Math.floor(Math.log(maxSpend * 0.15 / price + 1) / Math.log(1.15));
+        estimate = Math.max(1, Math.min(estimate, 500)); // Cap at 500
+
+        var before = building.amount;
+        building.buy(estimate);
+        var bought = building.amount - before;
+        return bought;
     },
 
     _fmt: function(n) {

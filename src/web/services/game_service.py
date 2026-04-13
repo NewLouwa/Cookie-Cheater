@@ -136,21 +136,44 @@ class GameService:
             )
             await asyncio.sleep(1)
 
-            # Step 3: Ascend (bypass confirmation)
+            # Step 3: Ascend — trigger and handle confirmation popup
             await loop.run_in_executor(self._executor, lambda:
-                self.bridge.connection.evaluate_js("Game.Ascend(1)")
+                self.bridge.connection.evaluate_js("""
+                    Game.Ascend(1);
+                    // Also click the confirmation if popup appears
+                    setTimeout(function() {
+                        var btn = document.querySelector('#promptOption0');
+                        if (btn) btn.click();
+                    }, 500);
+                    'ascending'
+                """)
             )
+
+            # Wait for ascension screen to be visible
+            for _ in range(15):
+                in_ascend = await loop.run_in_executor(self._executor, lambda:
+                    self.bridge.connection.evaluate_js(
+                        "document.getElementById('game') && document.getElementById('game').className.indexOf('ascending') !== -1 ? 'yes' : 'no'"
+                    )
+                )
+                if in_ascend == "yes":
+                    break
+                await asyncio.sleep(1)
             await asyncio.sleep(2)
 
             # Step 4: Buy all affordable heavenly upgrades (multiple passes)
-            for _ in range(10):
+            for pass_n in range(15):
                 result = await loop.run_in_executor(self._executor, lambda:
                     self.bridge.connection.evaluate_js("""(function() {
                         var bought = [];
                         if (!Game.UpgradesByPool || !Game.UpgradesByPool.prestige) return JSON.stringify(bought);
-                        for (var i = 0; i < Game.UpgradesByPool.prestige.length; i++) {
-                            var u = Game.UpgradesByPool.prestige[i];
-                            if (!u.bought && u.canBuy() && u.basePrice <= Game.heavenlyChips) { Game.PurchaseHeavenlyUpgrade(u.id); if (u.bought) bought.push(u.name); }
+                        var pool = Game.UpgradesByPool.prestige;
+                        var buyable = pool.filter(function(u) { return !u.bought && u.canBuy() && u.basePrice <= Game.heavenlyChips; });
+                        buyable.sort(function(a, b) { return a.basePrice - b.basePrice; });
+                        for (var i = 0; i < buyable.length; i++) {
+                            if (buyable[i].basePrice > Game.heavenlyChips) break;
+                            Game.PurchaseHeavenlyUpgrade(buyable[i].id);
+                            if (buyable[i].bought) bought.push(buyable[i].name);
                         }
                         return JSON.stringify(bought);
                     })()""")
@@ -159,10 +182,17 @@ class GameService:
                     break
                 await asyncio.sleep(0.5)
 
-            # Step 5: Reincarnate (bypass confirmation)
+            # Step 5: Reincarnate — click button and handle confirmation
             await asyncio.sleep(1)
             await loop.run_in_executor(self._executor, lambda:
-                self.bridge.connection.evaluate_js("Game.Reincarnate(1)")
+                self.bridge.connection.evaluate_js("""
+                    Game.Reincarnate(1);
+                    setTimeout(function() {
+                        var btn = document.querySelector('#promptOption0');
+                        if (btn) btn.click();
+                    }, 500);
+                    'reincarnating'
+                """)
             )
             await asyncio.sleep(3)
 

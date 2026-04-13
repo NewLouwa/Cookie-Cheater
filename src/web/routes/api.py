@@ -90,8 +90,23 @@ async def trigger_ascend(request: Request):
     )
     time.sleep(1)
 
-    # Step 2: Ascend (bypass=1 skips confirmation popup)
-    bridge.connection.evaluate_js("Game.Ascend(1)")
+    # Step 2: Ascend + auto-click confirmation popup
+    bridge.connection.evaluate_js("""
+        Game.Ascend(1);
+        setTimeout(function() {
+            var btn = document.querySelector('#promptOption0');
+            if (btn) btn.click();
+        }, 500);
+    """)
+
+    # Wait for ascension screen
+    for _ in range(15):
+        in_ascend = bridge.connection.evaluate_js(
+            "document.getElementById('game') && document.getElementById('game').className.indexOf('ascending') !== -1 ? 'yes' : 'no'"
+        )
+        if in_ascend == "yes":
+            break
+        time.sleep(1)
     time.sleep(2)
 
     # Step 3: Buy ALL affordable heavenly upgrades
@@ -119,9 +134,15 @@ async def trigger_ascend(request: Request):
         all_bought.extend(result)
         time.sleep(0.5)
 
-    # Step 4: Reincarnate (bypass=1 skips confirmation)
+    # Step 4: Reincarnate + auto-click confirmation
     time.sleep(1)
-    bridge.connection.evaluate_js("Game.Reincarnate(1)")
+    bridge.connection.evaluate_js("""
+        Game.Reincarnate(1);
+        setTimeout(function() {
+            var btn = document.querySelector('#promptOption0');
+            if (btn) btn.click();
+        }, 500);
+    """)
     time.sleep(2)
 
     # Step 5: Re-inject bot for the new run
