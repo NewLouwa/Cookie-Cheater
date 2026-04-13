@@ -123,6 +123,29 @@ CookieCheater.modules.garden = {
                     }
                 }
 
+                // === MUTATION CHILD ===
+                // If a plant is on a mutation_target tile, it's a MUTATION CHILD.
+                // It might be a new seed we haven't unlocked yet.
+                // Seeds ONLY unlock by harvesting MATURE plants.
+                // ALWAYS wait for mutation children to mature before harvesting!
+                if (goal && goal.goal === "mutation_target") {
+                    if (age < matureAge) {
+                        continue; // Growing! Let it mature to unlock the seed.
+                    } else {
+                        // It's mature! Harvest to unlock seed + get bonus
+                        M.harvest(x, y);
+                        CookieCheater.justify("garden", "MUTATION_HARVEST",
+                            "Harvested mutation child: " + plant.name + " (" + x + "," + y + ") at maturity — seed unlocked!");
+                        continue;
+                    }
+                }
+
+                // During mutating: if this plant species isn't unlocked as a seed yet,
+                // ALWAYS wait for it to mature (might be a spontaneous mutation)
+                if (this._phase === "mutating" && !plant.unlocked && age < matureAge) {
+                    continue;
+                }
+
                 // Crumbspore/Doughshroom: let die naturally (explode into cookies)
                 if (plant.name === "Crumbspore" || plant.name === "Doughshroom") continue;
 
