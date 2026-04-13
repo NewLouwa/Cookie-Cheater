@@ -216,13 +216,12 @@ CookieCheater.KB = {
                 ];
                 return names.indexOf(u.name) !== -1;
             },
+            _dangerous: ["One mind", "Communal brainsweep", "Elder Pact"],
             value: function(u, cps) {
                 // SKIP Grandmapocalypse triggers unless strategy is "full"
-                var dangerousNames = ["One mind", "Communal brainsweep", "Elder Pact"];
-                if (dangerousNames.indexOf(u.name) !== -1) {
-                    var strategy = CookieCheater.config.grandmapocalypse_strategy;
-                    if (strategy !== "full") {
-                        return 0; // Don't buy — would start wrath cookies
+                if (CookieCheater.KB.categories.research._dangerous.indexOf(u.name) !== -1) {
+                    if (CookieCheater.config.grandmapocalypse_strategy !== "full") {
+                        return -1; // Signal: SKIP this upgrade entirely
                     }
                 }
                 // CPS multiplier research
@@ -400,12 +399,14 @@ CookieCheater.KB = {
             var cat = CookieCheater.KB.categories[catName];
             if (cat.detect(upgrade)) {
                 var value = cat.value(upgrade, cps);
+                // value === -1 means "SKIP this upgrade" (e.g. dangerous research)
+                var shouldSkip = cat.priority === 0 || value === -1;
                 return {
                     category: catName,
-                    value: value,
+                    value: Math.max(value, 0),
                     priority: cat.priority,
                     payback: value > 0 ? (upgrade.basePrice / value) / cat.priority : Infinity,
-                    skip: cat.priority === 0, // Managed by another module
+                    skip: shouldSkip,
                     notes: cat.notes
                 };
             }
