@@ -68,12 +68,52 @@ async def trigger_save(request: Request):
     return {"saved": filepath}
 
 
+@router.post("/pre-ascension-spend")
+async def pre_ascension_spend(request: Request):
+    """Mega spend before ascending: sell market, pop wrinklers, buy all upgrades+buildings."""
+    bridge = request.app.state.game_bridge
+    result = bridge.connection.evaluate_js(
+        "JSON.stringify(CookieCheater.modules.purchaser.preAscensionSpend())"
+    )
+    return {"status": "spent", "actions": result}
+
+
 @router.post("/ascend")
 async def trigger_ascend(request: Request):
-    """Manually trigger ascension."""
+    """Full ascension: mega spend then ascend."""
     bridge = request.app.state.game_bridge
+
+    # Step 1: Pre-ascension mega spend
+    bridge.connection.evaluate_js(
+        "CookieCheater.modules.purchaser.preAscensionSpend()"
+    )
+
+    import time
+    time.sleep(1)
+
+    # Step 2: Ascend
     bridge.trigger_ascension()
-    return {"status": "ascending"}
+    time.sleep(2)
+
+    # Step 3: Buy heavenly upgrades in priority order
+    from ...strategy.ascension import HEAVENLY_PRIORITY
+    bought = []
+    for name in HEAVENLY_PRIORITY:
+        result = bridge.connection.evaluate_js(
+            f'(function() {{'
+            f'  var u = Game.Upgrades["{name}"];'
+            f'  if (u && !u.bought && u.canBuy()) {{ u.buy(); return "bought"; }}'
+            f'  return "skip";'
+            f'}})()'
+        )
+        if result == "bought":
+            bought.append(name)
+
+    # Step 4: Reincarnate
+    time.sleep(1)
+    bridge.reincarnate()
+
+    return {"status": "ascended", "heavenlyBought": bought}
 
 
 @router.post("/bot/stop")

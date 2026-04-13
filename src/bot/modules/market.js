@@ -180,6 +180,15 @@ CookieCheater.modules.market = {
                 break;
         }
 
+        // === FLOOR RECOVERY OVERRIDE ===
+        // When price < $5, the game GUARANTEES upward pressure regardless of mode
+        // Don't penalize for "Fast Fall" etc when floor recovery is active
+        if (recovery > 0 && score < 0) {
+            var modeDeduction = score; // How much the mode reduced our score
+            score = Math.max(score, 0); // Floor at 0 — recovery overrides mode penalty
+            reasons.push("Floor recovery overrides mode penalty (was " + modeDeduction + ")");
+        }
+
         // === EXPECTED PRICE MOVEMENT ===
         if (expDelta > 2) {
             score += 8;

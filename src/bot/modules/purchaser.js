@@ -257,6 +257,86 @@ CookieCheater.modules.purchaser = {
         return true;
     },
 
+    // Pre-ascension mega spend: sell everything, buy all upgrades, buy all buildings
+    // Called manually from dashboard or auto when ascending
+    preAscensionSpend: function() {
+        var log = [];
+
+        // 1. Sell ALL market positions
+        try {
+            var bank = Game.ObjectsById[5];
+            if (bank && bank.minigame) {
+                var M = bank.minigame;
+                for (var i = 0; i < M.goodsById.length; i++) {
+                    var g = M.goodsById[i];
+                    if (g.stock > 0) {
+                        M.sellGood(i, g.stock);
+                        log.push("Sold " + g.symbol + " x" + g.stock);
+                    }
+                }
+            }
+        } catch(e) {}
+
+        // 2. Pop ALL wrinklers
+        try {
+            if (Game.wrinklers) {
+                var popped = 0;
+                for (var i = 0; i < Game.wrinklers.length; i++) {
+                    if (Game.wrinklers[i].phase === 2) {
+                        Game.wrinklers[i].hp = 0;
+                        popped++;
+                    }
+                }
+                if (popped > 0) log.push("Popped " + popped + " wrinklers");
+            }
+        } catch(e) {}
+
+        // 3. Buy ALL affordable upgrades (most valuable first)
+        var upgradesBought = 0;
+        for (var pass = 0; pass < 20; pass++) { // Multiple passes since buying unlocks more
+            var bought = false;
+            for (var i = 0; i < Game.UpgradesInStore.length; i++) {
+                var u = Game.UpgradesInStore[i];
+                if (!u.bought && u.canBuy()) {
+                    // Skip Elder Pledge/Covenant (doesn't help for ascension)
+                    if (u.name === "Elder Pledge" || u.name === "Elder Covenant" || u.name === "Revoke Elder Covenant") continue;
+                    u.buy();
+                    upgradesBought++;
+                    bought = true;
+                }
+            }
+            if (!bought) break;
+        }
+        if (upgradesBought > 0) log.push("Bought " + upgradesBought + " upgrades");
+
+        // 4. Buy buildings — best payback first, until out of cookies
+        var buildingsBought = 0;
+        for (var pass = 0; pass < 500; pass++) {
+            var best = null;
+            var bestPayback = Infinity;
+            for (var i = 0; i < Game.ObjectsById.length; i++) {
+                var b = Game.ObjectsById[i];
+                if (b.locked || b.price > Game.cookies) continue;
+                var cps = b.storedCps * Game.globalCpsMult;
+                if (cps <= 0) cps = b.baseCps * Game.globalCpsMult;
+                if (cps <= 0) continue;
+                var pb = b.price / cps;
+                if (pb < bestPayback) { bestPayback = pb; best = b; }
+            }
+            if (!best) break;
+            best.buy();
+            buildingsBought++;
+        }
+        if (buildingsBought > 0) log.push("Bought " + buildingsBought + " buildings");
+
+        CookieCheater.justify("purchaser", "PRE_ASCENSION",
+            "MEGA SPEND: " + log.join(" | ") +
+            " | Cookies remaining: " + this._fmt(Game.cookies) +
+            " | CPS now: " + this._fmt(Game.cookiesPs));
+
+        return log;
+    },
+
     // Early game: just buy anything affordable, cheapest first
     _earlyGameBuy: function(cookies) {
         // Buy cheapest affordable upgrade first (often cursor/grandma upgrades)

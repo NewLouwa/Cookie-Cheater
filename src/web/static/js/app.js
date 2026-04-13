@@ -811,9 +811,18 @@ async function saveGame() {
     setTimeout(() => btn.textContent = 'Save', 2000);
 }
 
+async function preAscensionSpend() {
+    if (!confirm('MEGA SPEND before ascension?\n\nSell all stocks, pop wrinklers, buy all upgrades + buildings.')) return;
+    const res = await fetch('/api/pre-ascension-spend', { method: 'POST' });
+    const data = await res.json();
+    alert('Mega spend done!\n' + JSON.stringify(data.actions));
+}
+
 async function triggerAscend() {
-    if (!confirm('Ascend now? This resets your current run.')) return;
-    await fetch('/api/ascend', { method: 'POST' });
+    if (!confirm('ASCEND NOW?\n\n1. Mega spend (sell stocks, pop wrinklers, buy everything)\n2. Ascend\n3. Auto-buy heavenly upgrades\n4. Reincarnate\n\nRun will RESET!')) return;
+    const res = await fetch('/api/ascend', { method: 'POST' });
+    const data = await res.json();
+    alert('Ascended!\nHeavenly upgrades: ' + (data.heavenlyBought || []).join(', '));
 }
 
 // Action log refresh
