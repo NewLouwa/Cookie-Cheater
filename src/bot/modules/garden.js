@@ -185,118 +185,72 @@ CookieCheater.modules.garden = {
             return;
         }
 
-        // Plan the mutation layout based on grid size and parent types
+        // ================================================================
+        // COMMUNITY-OPTIMIZED MUTATION PATTERNS
+        // From Dashnet Discord (TheodoreHHH#7251)
+        // G = parent 1 (green), Y = parent 2 (yellow)
+        // _ = desired mutation tile (grey), R = undesired risk tile (red)
+        // ================================================================
         var sameSeed = (target.id1 === target.id2);
-        this._tileGoals = {};
-
-        // Get all unlocked tiles
-        var allTiles = [];
-        for (var y = 0; y < 6; y++) {
-            for (var x = 0; x < 6; x++) {
-                if (M.isTileUnlocked(x, y)) allTiles.push({x: x, y: y});
-            }
-        }
-
         var parentName1 = target.mut.parents[0];
         var parentName2 = target.mut.parents[1];
 
-        // First pass: check if ALL tiles are full (no room for mutations)
-        var emptyCount = 0;
-        for (var i = 0; i < allTiles.length; i++) {
-            if (M.plot[allTiles[i].y][allTiles[i].x][0] === 0) emptyCount++;
-        }
-
-        // If no empty tiles, harvest some plants to make room for mutations
-        if (emptyCount === 0 && allTiles.length >= 4) {
-            var harvested = 0;
-            for (var i = 0; i < allTiles.length; i++) {
-                var t = allTiles[i];
-                // Harvest every 3rd tile to create mutation targets
-                var pos = (t.x - allTiles[0].x) + (t.y - allTiles[0].y) * 3;
-                if (pos % 3 === 1) { // Same pattern as "empty" below
-                    M.harvest(t.x, t.y);
-                    harvested++;
-                }
-            }
-            if (harvested > 0) {
-                CookieCheater.justify("garden", "CLEAR_FOR_MUTATION",
-                    "Harvested " + harvested + " plants to make room for " + target.mut.child + " mutations");
-            }
-        }
-
-        // Tag existing plants that are correct parents
-        for (var i = 0; i < allTiles.length; i++) {
-            var t = allTiles[i];
-            var tile = M.plot[t.y][t.x];
-            if (tile[0] > 0) {
-                var plant = M.plantsById[tile[0] - 1];
-                if (plant && (plant.name === parentName1 || plant.name === parentName2)) {
-                    this._tileGoals[t.x + "," + t.y] = {
-                        goal: "mutation_parent",
-                        seed: plant.name,
-                        targetChild: target.mut.child
-                    };
+        // Get grid bounds
+        var minX = 99, maxX = 0, minY = 99, maxY = 0;
+        for (var y = 0; y < 6; y++) {
+            for (var x = 0; x < 6; x++) {
+                if (M.isTileUnlocked(x, y)) {
+                    if (x < minX) minX = x; if (x > maxX) maxX = x;
+                    if (y < minY) minY = y; if (y > maxY) maxY = y;
                 }
             }
         }
+        var cols = maxX - minX + 1;
+        var rows = maxY - minY + 1;
 
-        // For SAME parent (e.g. 2x wheat): checkerboard, leave gaps for mutations
-        // For DIFFERENT parents: interleave A-B, ensure empty tiles touch both
+        // Build the pattern as a 2D array: 'A'=parent1, 'B'=parent2, '_'=mutation target
+        var pattern = this._getMutationPattern(cols, rows, sameSeed);
+
+        // First: harvest any tiles that are in the WRONG spot according to the pattern
+        this._tileGoals = {};
+        for (var py = 0; py < rows; py++) {
+            for (var px = 0; px < cols; px++) {
+                var gx = minX + px, gy = minY + py;
+                if (!M.isTileUnlocked(gx, gy)) continue;
+                var role = pattern[py] ? pattern[py][px] : '_';
+                var tile = M.plot[gy][gx];
+
+                if (role === '_') {
+                    // This tile should be EMPTY for mutations
+                    if (tile[0] > 0) {
+                        // Wrong plant here — harvest it
+                        M.harvest(gx, gy);
+                    }
+                    this._tileGoals[gx + "," + gy] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
+                } else {
+                    var wantedId = (role === 'A') ? target.id1 : target.id2;
+                    var wantedName = (role === 'A') ? parentName1 : parentName2;
+
+                    if (tile[0] > 0) {
+                        // Check if it's the right plant
+                        var existing = M.plantsById[tile[0] - 1];
+                        if (existing && existing.name === wantedName) {
+                            this._tileGoals[gx + "," + gy] = { goal: "mutation_parent", seed: wantedName, targetChild: target.mut.child };
+                            continue; // Correct plant already here
+                        }
+                        // Wrong plant — harvest and replant
+                        M.harvest(gx, gy);
+                    }
+
+                    // Plant the correct parent
+                    if (this._tryPlant(M, wantedId, gx, gy)) {
+                        this._tileGoals[gx + "," + gy] = { goal: "mutation_parent", seed: wantedName, targetChild: target.mut.child };
+                    }
+                }
+            }
+        }
         var planted = 0;
-
-        if (sameSeed) {
-            // Checkerboard: plant on even (x+y), leave odd for mutations
-            for (var i = 0; i < allTiles.length; i++) {
-                var t = allTiles[i];
-                if (M.plot[t.y][t.x][0] > 0) continue; // Already has something
-
-                if ((t.x + t.y) % 2 === 0) {
-                    if (this._tryPlant(M, target.id1, t.x, t.y)) {
-                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName1, targetChild: target.mut.child };
-                        planted++;
-                    }
-                } else {
-                    this._tileGoals[t.x + "," + t.y] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
-                }
-            }
-        } else {
-            // Different parents: for small grids, use explicit optimal pattern
-            // Goal: every empty tile must be adjacent to at least 1 of parent A AND 1 of parent B
-            //
-            // For any grid: alternate rows of A and B, leaving middle row empty
-            // Row pattern: A _ B _ A _ (for 6-wide) or A B _ (for 3-wide)
-            // This guarantees empty tiles are sandwiched between A and B rows
-
-            // Strategy: plant parents with GAPS for mutations to appear
-            // Rule: at least 1/3 of tiles must be empty targets
-            // Each empty tile must be adjacent to at least one A and one B
-            for (var i = 0; i < allTiles.length; i++) {
-                var t = allTiles[i];
-                if (M.plot[t.y][t.x][0] > 0) continue;
-
-                // Use modulo 3 pattern for ALL grid sizes
-                // This guarantees 1/3 empty, 1/3 parent A, 1/3 parent B
-                var pos = (t.x - allTiles[0].x) + (t.y - allTiles[0].y) * 3;
-                var role;
-                if (pos % 3 === 0) role = "A";
-                else if (pos % 3 === 1) role = "empty"; // EMPTY in the middle!
-                else role = "B";
-
-                if (role === "A") {
-                    if (this._tryPlant(M, target.id1, t.x, t.y)) {
-                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName1, targetChild: target.mut.child };
-                        planted++;
-                    }
-                } else if (role === "B") {
-                    if (this._tryPlant(M, target.id2, t.x, t.y)) {
-                        this._tileGoals[t.x + "," + t.y] = { goal: "mutation_parent", seed: parentName2, targetChild: target.mut.child };
-                        planted++;
-                    }
-                } else {
-                    this._tileGoals[t.x + "," + t.y] = { goal: "mutation_target", seed: null, targetChild: target.mut.child };
-                }
-            }
-        }
+        for (var k in this._tileGoals) { if (this._tileGoals[k].goal === "mutation_parent") planted++; }
 
         if (planted > 0) {
             var chanceStr = target.mut.chance >= 0.01 ? (target.mut.chance * 100) + "%" : (target.mut.chance * 100).toFixed(2) + "%";
@@ -644,6 +598,57 @@ CookieCheater.modules.garden = {
             if (M.plantsById[i] && M.plantsById[i].unlocked) seeds.push(M.plantsById[i].name);
         }
         return seeds;
+    },
+
+    // Community-optimized mutation patterns from Dashnet Discord
+    // A = parent 1, B = parent 2 (or A for same-plant), _ = mutation target
+    // Patterns maximize desired mutation tiles and minimize undesired ones
+    _getMutationPattern: function(cols, rows, sameSeed) {
+        // Same plant patterns (2x Green)
+        var same = {
+            '2x2': [['A','A'],['_','_']],
+            '3x2': [['_','A','_'],['_','A','_']],
+            '3x3': [['A','_','A'],['_','_','_'],['A','_','A']],
+            '4x3': [['A','_','A','_'],['_','_','_','_'],['A','_','A','_']],
+            '4x4': [['A','A','_','_'],['A','A','_','_'],['_','_','A','A'],['_','_','A','A']],
+            '5x4': [['A','_','_','A','_'],['_','_','_','_','_'],['A','_','_','A','_'],['_','_','_','_','_']],
+            '5x5': [['A','_','A','_','A'],['_','_','_','_','_'],['A','_','A','_','A'],['_','_','_','_','_'],['A','_','A','_','A']],
+            '6x5': [['A','_','A','_','A','_'],['_','_','_','_','_','_'],['A','_','A','_','A','_'],['_','_','_','_','_','_'],['A','_','A','_','A','_']],
+            '6x6': [['A','_','A','_','A','_'],['_','_','_','_','_','_'],['A','_','A','_','A','_'],['_','_','_','_','_','_'],['A','_','A','_','A','_'],['_','_','_','_','_','_']],
+        };
+
+        // Different plant patterns (Green + Yellow)
+        var diff = {
+            '2x2': [['A','B'],['_','_']],
+            '3x2': [['A','_','B'],['_','_','_']],
+            '3x3': [['_','A','_'],['B','_','B'],['_','A','_']],
+            '4x3': [['A','_','B','_'],['_','_','_','_'],['B','_','A','_']],
+            '4x4': [['A','_','_','B'],['_','_','_','_'],['_','_','_','_'],['B','_','_','A']],
+            '5x4': [['A','_','B','_','A'],['_','_','_','_','_'],['B','_','A','_','B'],['_','_','_','_','_']],
+            '5x5': [['A','_','B','_','A'],['_','_','_','_','_'],['B','_','A','_','B'],['_','_','_','_','_'],['A','_','B','_','A']],
+            '6x5': [['A','_','B','_','A','_'],['_','_','_','_','_','_'],['B','_','A','_','B','_'],['_','_','_','_','_','_'],['A','_','B','_','A','_']],
+            '6x6': [['A','_','B','_','A','_'],['_','_','_','_','_','_'],['B','_','A','_','B','_'],['_','_','_','_','_','_'],['A','_','B','_','A','_'],['_','_','_','_','_','_']],
+        };
+
+        var key = cols + 'x' + rows;
+        var patterns = sameSeed ? same : diff;
+        if (patterns[key]) return patterns[key];
+
+        // Fallback for unknown sizes: checkerboard for same, alternating for diff
+        var fallback = [];
+        for (var y = 0; y < rows; y++) {
+            var row = [];
+            for (var x = 0; x < cols; x++) {
+                if (sameSeed) {
+                    row.push((x + y) % 2 === 0 ? 'A' : '_');
+                } else {
+                    if ((x + y) % 2 === 0) row.push(y % 2 === 0 ? 'A' : 'B');
+                    else row.push('_');
+                }
+            }
+            fallback.push(row);
+        }
+        return fallback;
     },
 
     _findSeed: function(M, name) {
