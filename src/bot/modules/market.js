@@ -228,7 +228,7 @@ CookieCheater.modules.market = {
         // === OVERHEAD DRAG ===
         // With high overhead, only extreme bargains are worth buying
         // BUT: floor recovery (price < $5) is game-guaranteed profit — NEVER suppress
-        if (stock === 0 && oh > 0.10 && score > 0) {
+        if (stock < maxStock && oh > 0.10 && score > 0) {
             var hurdlePct = Math.round(this._overheadHurdle(brokers) * 100);
             if (recovery > 0) {
                 // Floor recovery: game adds (5-price)/2 per tick — GUARANTEED upside
@@ -243,7 +243,7 @@ CookieCheater.modules.market = {
         }
 
         // === COOKIE BUDGET ===
-        if (stock === 0 && score > 0) {
+        if (stock < maxStock && score > 0) {
             var buyCost = val * (1 + oh);
             if (buyCost > Game.cookies * 0.1) {
                 score = Math.min(score, 5);
@@ -261,16 +261,23 @@ CookieCheater.modules.market = {
         if (recovery > 0) buyThreshold = Math.min(buyThreshold, 25);
 
         if (stock > 0 && score < -15) action = "sell";
-        else if (stock === 0 && score > buyThreshold) action = "buy";
+        else if (score > buyThreshold && stock < maxStock) action = "buy"; // Buy even if we hold some
 
         // Signal for dashboard
         var signal, strength;
-        if (stock > 0) {
+        var canBuyMore = stock < maxStock;
+        if (stock > 0 && !canBuyMore) {
+            // Position full — can only hold or sell
             if (score < -20) { signal = "SELL"; strength = "strong"; }
             else if (score < -8) { signal = "SELL"; strength = "moderate"; }
             else if (score > 15) { signal = "HOLD"; strength = "strong"; }
             else { signal = "HOLD"; strength = "weak"; }
+        } else if (stock > 0 && score < -15) {
+            // Holding + negative score = sell
+            if (score < -20) { signal = "SELL"; strength = "strong"; }
+            else { signal = "SELL"; strength = "moderate"; }
         } else {
+            // Can buy (no stock or partial position with room)
             if (score > 35) { signal = "BUY"; strength = "strong"; }
             else if (score > 18) { signal = "BUY"; strength = "moderate"; }
             else if (score > 8) { signal = "BUY"; strength = "weak"; }
