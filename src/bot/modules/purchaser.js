@@ -6,6 +6,8 @@ CookieCheater.modules.purchaser = {
     currentPhase: "scanning",
     _lastPurchaseTime: 0,
     _purchaseCooldown: 100,
+    _postAscensionMode: false,
+    _postAscensionStart: 0,
 
     tick: function() {
         // During combos: buy as fast as possible (no cooldown, no throttle)
@@ -17,6 +19,25 @@ CookieCheater.modules.purchaser = {
 
         var cookies = Game.cookies;
         var cps = Game.cookiesPs;
+
+        // === POST-ASCENSION UPGRADE RUSH ===
+        // After ascending, the first upgrades are MASSIVELY more powerful than buildings
+        // because prestige multiplies everything. A +2% CPS upgrade with 798 prestige
+        // gives way more than buying 10 Cursors.
+        // Detect: prestige > 0 AND total buildings < 200 (fresh run)
+        if (Game.prestige > 0) {
+            var totalBuildings = 0;
+            for (var bi = 0; bi < Game.ObjectsById.length; bi++) {
+                if (!Game.ObjectsById[bi].locked) totalBuildings += Game.ObjectsById[bi].amount;
+            }
+            if (totalBuildings < 500) {
+                this._postAscensionMode = true;
+                this._postAscensionBuy(cookies, cps);
+                return;
+            } else {
+                this._postAscensionMode = false;
+            }
+        }
 
         // === EARLY GAME BOOTSTRAP ===
         if (cps < 1) {
@@ -255,6 +276,65 @@ CookieCheater.modules.purchaser = {
         this._lastPurchaseTime = Date.now();
         this.currentPhase = comboTag + ": " + best.name;
         return true;
+    },
+
+    // Post-ascension buying: UPGRADES FIRST, always.
+    // After ascending with prestige, upgrades give multiplicative boosts
+    // that compound with the prestige multiplier. A single +2% cookie upgrade
+    // with 798 prestige = +2% on top of 798% base = much more than a building.
+    _postAscensionBuy: function(cookies, cps) {
+        // Priority 1: buy ANY affordable upgrade (sorted by KB priority)
+        var KB = CookieCheater.KB;
+        var bestUpgrade = null;
+        var bestPriority = -1;
+
+        for (var i = 0; i < Game.UpgradesInStore.length; i++) {
+            var u = Game.UpgradesInStore[i];
+            if (u.bought || !u.canBuy()) continue;
+            var analysis = KB ? KB.analyzeUpgrade(u, cps) : null;
+            if (analysis && analysis.skip) continue;
+            var pri = analysis ? analysis.priority : 0.5;
+            if (pri > bestPriority) {
+                bestPriority = pri;
+                bestUpgrade = u;
+            }
+        }
+
+        if (bestUpgrade) {
+            bestUpgrade.buy();
+            CookieCheater.stats.upgradesBought++;
+            var cat = KB ? KB.analyzeUpgrade(bestUpgrade, cps).category : "?";
+            CookieCheater.justify("purchaser", "POST_ASCENSION",
+                "[ASCENSION RUSH] " + bestUpgrade.name + " [" + cat + "] $" + this._fmt(bestUpgrade.basePrice) +
+                " — upgrades first! Prestige x" + Game.prestige + " multiplies everything");
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "ASCENSION: " + bestUpgrade.name;
+            return;
+        }
+
+        // Priority 2: if no upgrades affordable, buy best building
+        // But only buy a building if it's cheap enough to get us to the NEXT upgrade faster
+        var bestBuilding = null;
+        var bestPayback = Infinity;
+        for (var i = 0; i < Game.ObjectsById.length; i++) {
+            var b = Game.ObjectsById[i];
+            if (b.locked || b.price > cookies) continue;
+            var singleCps = b.storedCps * Game.globalCpsMult;
+            if (singleCps <= 0) singleCps = b.baseCps * Game.globalCpsMult;
+            if (singleCps <= 0) continue;
+            var payback = this._opportunityCostPayback(b.price, singleCps, cookies, cps);
+            if (payback < bestPayback) { bestPayback = payback; bestBuilding = b; }
+        }
+
+        if (bestBuilding) {
+            bestBuilding.buy();
+            CookieCheater.stats.buildingsBought++;
+            CookieCheater.justify("purchaser", "POST_ASCENSION",
+                "[ASCENSION] " + bestBuilding.name + " #" + bestBuilding.amount +
+                " — building CPS to afford next upgrade");
+            this._lastPurchaseTime = Date.now();
+            this.currentPhase = "ASCENSION: " + bestBuilding.name;
+        }
     },
 
     // Pre-ascension mega spend: sell everything, buy all upgrades, buy all buildings

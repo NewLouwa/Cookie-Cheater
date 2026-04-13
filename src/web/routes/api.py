@@ -80,40 +80,82 @@ async def pre_ascension_spend(request: Request):
 
 @router.post("/ascend")
 async def trigger_ascend(request: Request):
-    """Full ascension: mega spend then ascend."""
+    """Full ascension: mega spend → ascend → buy heavenly upgrades → reincarnate → re-inject bot."""
     bridge = request.app.state.game_bridge
+    import time
 
     # Step 1: Pre-ascension mega spend
-    bridge.connection.evaluate_js(
-        "CookieCheater.modules.purchaser.preAscensionSpend()"
+    spend_result = bridge.connection.evaluate_js(
+        "JSON.stringify(CookieCheater.modules.purchaser.preAscensionSpend())"
     )
-
-    import time
     time.sleep(1)
 
-    # Step 2: Ascend
-    bridge.trigger_ascension()
+    # Step 2: Ascend (bypass=1 skips confirmation popup)
+    bridge.connection.evaluate_js("Game.Ascend(1)")
     time.sleep(2)
 
-    # Step 3: Buy heavenly upgrades in priority order
-    from ...strategy.ascension import HEAVENLY_PRIORITY
-    bought = []
-    for name in HEAVENLY_PRIORITY:
-        result = bridge.connection.evaluate_js(
-            f'(function() {{'
-            f'  var u = Game.Upgrades["{name}"];'
-            f'  if (u && !u.bought && u.canBuy()) {{ u.buy(); return "bought"; }}'
-            f'  return "skip";'
-            f'}})()'
-        )
-        if result == "bought":
-            bought.append(name)
+    # Step 3: Buy ALL affordable heavenly upgrades
+    # Do multiple passes since buying one can unlock others
+    all_bought = []
+    for pass_num in range(10):
+        result = bridge.connection.evaluate_js("""(function() {
+            var bought = [];
+            if (!Game.UpgradesByPool || !Game.UpgradesByPool.prestige) return JSON.stringify(bought);
+            var pool = Game.UpgradesByPool.prestige;
+            for (var i = 0; i < pool.length; i++) {
+                var u = pool[i];
+                if (!u.bought && u.unlocked && u.canBuy()) {
+                    u.buy();
+                    bought.push(u.name);
+                }
+            }
+            return JSON.stringify(bought);
+        })()""")
+        if isinstance(result, str):
+            import json
+            result = json.loads(result)
+        if not result:
+            break
+        all_bought.extend(result)
+        time.sleep(0.5)
 
-    # Step 4: Reincarnate
+    # Step 4: Reincarnate (bypass=1 skips confirmation)
     time.sleep(1)
-    bridge.reincarnate()
+    bridge.connection.evaluate_js("Game.Reincarnate(1)")
+    time.sleep(2)
 
-    return {"status": "ascended", "heavenlyBought": bought}
+    # Step 5: Re-inject bot for the new run
+    from ...bot.assembler import assemble_bot
+    service = request.app.state.game_service
+
+    # Wait for game to be ready
+    for i in range(20):
+        ready = bridge.connection.evaluate_js(
+            "typeof Game !== 'undefined' && Game.ready ? 'ready' : 'loading'"
+        )
+        if ready == "ready":
+            break
+        time.sleep(1)
+
+    # Kill old bot and inject fresh
+    bridge.connection.evaluate_js("""
+        if (window.CookieCheater) {
+            CookieCheater.running = false;
+            CookieCheater.modules = {};
+        }
+        delete window.CookieCheater;
+        'cleared'
+    """)
+    time.sleep(0.5)
+    js_code = assemble_bot(service.config.to_dict())
+    bridge.inject_bot(js_code)
+
+    return {
+        "status": "ascended_and_restarted",
+        "heavenlyBought": all_bought,
+        "totalBought": len(all_bought),
+        "spendResult": spend_result,
+    }
 
 
 @router.post("/bot/stop")

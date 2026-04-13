@@ -52,7 +52,7 @@ def should_ascend(game_state, config):
     """Determine if the bot should ascend.
 
     Args:
-        game_state: Dict with 'prestige', 'cookiesEarned', 'heavenlyChips', etc.
+        game_state: Dict with 'prestige', 'cookiesEarned', 'heavenlyChips', 'heavenlyChipsSpent', etc.
         config: BotConfig instance.
 
     Returns:
@@ -62,20 +62,31 @@ def should_ascend(game_state, config):
     cookies_earned = game_state.get("cookiesEarned", 0)
     potential_prestige = calculate_prestige(cookies_earned)
     new_levels = potential_prestige - current_prestige
+    chips_spent = game_state.get("heavenlyChipsSpent", 0)
+    chips_free = game_state.get("heavenlyChips", 0)
+
+    # Net new chips = new prestige levels gained (these become spendable chips)
+    net_new_chips = new_levels
 
     if current_prestige == 0:
-        # First ascension: wait for enough levels to buy key upgrades
+        # First ascension
         target = config.first_ascension_target
         if new_levels >= target:
-            return True, f"First ascension: {new_levels} new prestige levels (target: {target})"
-        return False, f"First ascension: {new_levels}/{target} prestige levels"
+            return True, f"First ascension: {new_levels} new prestige = {net_new_chips} new chips (target: {target})"
+        return False, f"First ascension: {new_levels}/{target} levels = {net_new_chips} new chips"
 
-    # Subsequent ascensions: ascend when prestige multiplies enough
+    # Subsequent: ascend when prestige multiplies enough
     ratio = potential_prestige / max(current_prestige, 1)
     if ratio >= config.ascension_multiplier:
-        return True, f"Prestige ratio {ratio:.1f}x (target: {config.ascension_multiplier}x)"
+        return True, (
+            f"Prestige {current_prestige} -> {potential_prestige} ({ratio:.1f}x) | "
+            f"+{net_new_chips} new chips (currently {chips_free} free + {chips_spent} spent)"
+        )
 
-    return False, f"Prestige ratio {ratio:.2f}x / {config.ascension_multiplier}x needed"
+    return False, (
+        f"Prestige ratio {ratio:.2f}x / {config.ascension_multiplier}x needed | "
+        f"+{net_new_chips} new chips would be gained"
+    )
 
 
 def get_heavenly_buy_list(game_bridge):

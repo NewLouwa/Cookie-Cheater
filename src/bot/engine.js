@@ -235,6 +235,13 @@ var CookieCheater = window.CookieCheater = {
             comboActive: CookieCheater._comboActive || false,
             comboScore: CookieCheater._comboScore || 1,
             purchaserPhase: CookieCheater.modules.purchaser ? CookieCheater.modules.purchaser.currentPhase : "unknown",
+            postAscensionMode: CookieCheater.modules.purchaser ? CookieCheater.modules.purchaser._postAscensionMode : false,
+            ascensionReady: (function() {
+                var potential = Math.floor(Math.pow((Game.cookiesEarned || 0) / 1e12, 1/3));
+                var current = Game.prestige || 0;
+                if (current === 0) return potential >= 365;
+                return potential >= current * 2;
+            })(),
             strategy: CookieCheater.strategy || null,
             lumpProposal: CookieCheater._lumpProposal || null,
             grimoire: CookieCheater._grimoire || null,
