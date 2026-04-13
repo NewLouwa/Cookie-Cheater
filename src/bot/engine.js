@@ -118,9 +118,34 @@ var CookieCheater = window.CookieCheater = {
         return false;
     },
 
+    // Auto-close game popups that block the bot (One Mind warning, etc.)
+    _closePopups: function() {
+        // The game shows confirmation popups that freeze everything
+        // Close them by clicking "No" (safe default) or dismiss
+        try {
+            var prompt = document.getElementById('promptContent');
+            if (prompt && prompt.offsetParent !== null) {
+                // Check if it's a dangerous popup (One Mind, Communal Brainsweep, Elder Pact)
+                var text = prompt.innerText || '';
+                if (text.indexOf('One mind') !== -1 || text.indexOf('Communal brainsweep') !== -1 || text.indexOf('Elder Pact') !== -1) {
+                    // Grandmapocalypse trigger — click No if strategy is not "full"
+                    if (CookieCheater.config.grandmapocalypse_strategy !== "full") {
+                        Game.ClosePrompt();
+                        CookieCheater.justify("engine", "POPUP_CLOSED", "Dismissed Grandmapocalypse popup (strategy: " + CookieCheater.config.grandmapocalypse_strategy + ")");
+                        return;
+                    }
+                }
+                // Any other popup — close it
+                Game.ClosePrompt();
+            }
+        } catch(e) {}
+    },
+
     // Main loop: called every game logic frame
     mainLoop: function() {
         if (!CookieCheater.running) return;
+        // Handle blocking popups first
+        CookieCheater._closePopups();
         for (var key in CookieCheater.modules) {
             try {
                 CookieCheater.modules[key].tick();
