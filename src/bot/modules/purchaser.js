@@ -25,22 +25,25 @@ CookieCheater.modules.purchaser = {
         }
 
         // === COMBO-AWARE PURCHASING ===
-        // DURING combo: buy BUILDINGS to maximize CPS while multiplier is active
-        //   More CPS × active combo multiplier = more cookies extracted
-        // AFTER combo: buy UPGRADES first (permanent multipliers > additive buildings)
-        //   Upgrades amplify ALL future income; buildings just add a flat amount
-        if (CookieCheater._comboActive) {
+        // Tier 1 (Frenzy x7): buy upgrades + good-ROI buildings (no reckless spending)
+        // Tier 2+ (x100+): aggressive building rush to maximize CPS during multiplier
+        // After any combo: upgrade rush (permanent multipliers first)
+        var comboTier = CookieCheater._comboTier || 0;
+        if (comboTier >= 2) {
+            // Real combo — aggressive building rush
             this._comboBuildingRush(cookies, cps);
             return;
+        }
+        if (comboTier === 1) {
+            // Frenzy alone — still buy upgrades and good buildings, but use normal logic
+            // (falls through to normal purchasing below, just skips Lucky banking)
         }
         if (this._comboUpgradeRush(cookies, cps)) return;
 
         // === LUCKY BANKING (soft reserve) ===
-        // Lucky gives min(900*CPS, 15% of bank). To max: bank >= 6000*CPS
-        // But we NEVER fully stall — still buy if the purchase pays back fast.
-        // The bank fills naturally as CPS grows; blocking purchases slows CPS growth.
+        // Skip Lucky banking during any combo tier — spend while multiplier is active
         var luckyBank = CookieCheater.getLuckyBank();
-        var belowBank = cookies < luckyBank;
+        var belowBank = comboTier > 0 ? false : (cookies < luckyBank);
 
         // Reserve cookies for garden planting (garden module sets this)
         var gardenReserve = CookieCheater._gardenReserve || 0;

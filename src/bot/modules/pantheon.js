@@ -23,7 +23,10 @@ CookieCheater.modules.pantheon = {
         var M = temple.minigame;
         if (!M.gods) return;
 
-        var comboActive = CookieCheater._comboActive && CookieCheater._comboScore > 100;
+        // Only swap to Godzamok for tier 2+ combos (x100+ multiplier)
+        // Tier 1 (Frenzy x7 alone) doesn't justify selling buildings
+        var comboTier = CookieCheater._comboTier || 0;
+        var comboActive = comboTier >= 2;
 
         // Track combo lifecycle
         this._trackCombo(comboActive);
@@ -119,31 +122,34 @@ CookieCheater.modules.pantheon = {
         var totalSold = 0;
         var soldDetails = [];
         var cookies = Game.cookies;
+        var comboTier = CookieCheater._comboTier || 2;
 
-        // Find buildings cheap enough to sell and rebuy
+        // Scale budget by combo tier:
+        // Tier 2 (x100+): spend up to 5% of cookies on rebuy
+        // Tier 3 (x1000+): spend up to 15% — massive combo justifies it
+        var budgetPct = comboTier >= 3 ? 0.15 : 0.05;
+        var maxPerType = comboTier >= 3 ? 100 : 50;
+
         for (var i = 0; i < Game.ObjectsById.length; i++) {
             if (safe.indexOf(i) !== -1) continue;
             var b = Game.ObjectsById[i];
             if (!b || b.locked || b.amount < 10) continue;
 
-            // Check rebuy cost: selling N buildings then rebuying costs ~N * current_price
-            // (price increases 15% per building, so rebuying is MORE expensive)
-            // Only sell if rebuy cost for 50 buildings < 5% of bank
             var rebuyCost = 0;
             var price = b.price;
-            var sellCount = Math.min(b.amount - 1, 50); // Cap at 50 per building type
+            var sellCount = Math.min(b.amount - 1, maxPerType);
             // Estimate rebuy cost (price * (1 + 1.15 + 1.15^2 + ... + 1.15^(n-1)))
             for (var j = 0; j < sellCount; j++) {
                 rebuyCost += price * Math.pow(1.15, j);
             }
 
-            if (rebuyCost > cookies * 0.05) {
+            if (rebuyCost > cookies * budgetPct) {
                 // Too expensive to rebuy — try fewer
                 sellCount = 0;
                 rebuyCost = 0;
                 for (var j = 0; j < Math.min(b.amount - 1, 200); j++) {
                     var nextCost = price * Math.pow(1.15, j);
-                    if (rebuyCost + nextCost > cookies * 0.05) break;
+                    if (rebuyCost + nextCost > cookies * budgetPct) break;
                     rebuyCost += nextCost;
                     sellCount = j + 1;
                 }

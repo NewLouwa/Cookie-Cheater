@@ -19,15 +19,19 @@ CookieCheater.modules.clicker = {
 
         var combo = this._detectCombo();
 
-        // COMBO = multiple buff types stacking, NOT just Frenzy alone
-        // Frenzy (x7) alone is NOT a combo — it's normal gameplay
-        // Real combo = CPS buff + Click buff (Frenzy + Click Frenzy = x5439)
-        // OR extremely high CPS mult (Elder Frenzy x666)
-        this._comboActive = (combo.hasClickBuff && combo.hasCpsBuff) || combo.cpsMult >= 100;
+        // Any buff with score > 1 is a "combo" — but we expose the TIER
+        // so other modules can scale their behavior:
+        //   tier 0: no buffs (score=1)
+        //   tier 1: single buff like Frenzy x7 (score < 100) — buy smart, NO godzamok
+        //   tier 2: multi-buff combo (score >= 100) — aggressive buying, godzamok sells
+        //   tier 3: mega combo (score >= 1000) — full burst, max godzamok
+        this._comboActive = combo.score > 1;
+        this._comboTier = combo.score >= 1000 ? 3 : combo.score >= 100 ? 2 : combo.score > 1 ? 1 : 0;
 
         // Expose combo state for other modules (Godzamok, etc.)
         CookieCheater._comboActive = this._comboActive;
         CookieCheater._comboScore = combo.score;
+        CookieCheater._comboTier = this._comboTier;
 
         var phase = CookieCheater.getPhase();
 
